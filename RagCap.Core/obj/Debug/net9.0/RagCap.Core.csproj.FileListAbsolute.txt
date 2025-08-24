@@ -1,3 +1,4 @@
+C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.csproj.AssemblyReference.cache
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.AssemblyInfoInputs.cache
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.AssemblyInfo.cs
@@ -6,7 +7,6 @@ C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.sourcelin
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\bin\Debug\net9.0\RagCap.Core.deps.json
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\bin\Debug\net9.0\RagCap.Core.dll
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\bin\Debug\net9.0\RagCap.Core.pdb
-C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.csproj.AssemblyReference.cache
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.dll
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\refint\RagCap.Core.dll
 C:\Users\Caleb\Desktop\RagCap\RagCap.Core\obj\Debug\net9.0\RagCap.Core.pdb
