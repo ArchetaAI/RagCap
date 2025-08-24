@@ -1,0 +1,37 @@
+
+# Visual Studio
+.vs/
+
+# Rider
+.idea/
+
+# Binaries
+bin/
+obj/
+
+# Build artifacts
+build/
+
+# User-specific files
+*.suo
+*.user
+*.sln.DotSettings.user
+
+# Cache files
+.futdcache.v2
+.dtbcache.v2
+
+# NuGet packages
+packages/
+
+# Logs
+*.log
+
+# Test results
+*.trx
+
+# Dotnet tools
+.store/
+
+# Other
+*.DS_Store
