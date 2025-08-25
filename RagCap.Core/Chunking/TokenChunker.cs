@@ -1,4 +1,5 @@
 using RagCap.Core.Capsule;
+using RagCap.Core.Processing;
 using RagCap.Core.Utils;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,7 @@ namespace RagCap.Core.Chunking
         private readonly int _overlapTokens;
         private readonly bool _preserveParagraphs;
         private readonly Tokenizer _tokenizer;
+        private readonly Preprocessor _preprocessor;
 
         public TokenChunker(int maxTokens = 512, int overlapTokens = 50, bool preserveParagraphs = true)
         {
@@ -19,12 +21,13 @@ namespace RagCap.Core.Chunking
             _overlapTokens = overlapTokens;
             _preserveParagraphs = preserveParagraphs;
             _tokenizer = new Tokenizer();
+            _preprocessor = new Preprocessor();
         }
 
         public List<Chunk> Chunk(SourceDocument document)
         {
             var chunks = new List<Chunk>();
-            var text = document.Content;
+            var text = _preprocessor.Process(document);
             if (string.IsNullOrWhiteSpace(text) || document.Id is null)
             {
                 return chunks;
