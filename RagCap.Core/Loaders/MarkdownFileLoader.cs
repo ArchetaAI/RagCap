@@ -7,9 +7,9 @@ namespace Ragcap.Core.Loaders
     {
         public bool CanLoad(string extension) => extension.Equals(".md", StringComparison.OrdinalIgnoreCase);
 
-        public string LoadContent(string filePath)
+                public async Task<string> LoadAsync(string filePath)
         {
-            var content = File.ReadAllText(filePath);
+            var content = await File.ReadAllTextAsync(filePath);
             return Markdown.ToPlainText(content);
         }
     }

@@ -6,6 +6,6 @@ namespace Ragcap.Core.Loaders
     {
         public bool CanLoad(string extension) => extension.Equals(".txt", StringComparison.OrdinalIgnoreCase);
 
-        public string LoadContent(string filePath) => File.ReadAllText(filePath);
+                public async Task<string> LoadAsync(string filePath) => await File.ReadAllTextAsync(filePath);
     }
 }

@@ -1,20 +1,21 @@
-using System.Collections.Generic;
+using RagCap.Core.Loaders;
+using System.IO;
 
-namespace Ragcap.Core.Loaders
+namespace RagCap.Core.Ingestion
 {
     public static class FileLoaderFactory
     {
-        private static readonly List<IFileLoader> Loaders = new()
+        public static IFileLoader GetLoader(string filePath)
         {
-            new TextFileLoader(),
-            new MarkdownFileLoader(),
-            new PdfFileLoader(),
-            new HtmlFileLoader()
-        };
-
-        public static IFileLoader? GetLoader(string extension)
-        {
-            return Loaders.FirstOrDefault(l => l.CanLoad(extension));
+            string extension = Path.GetExtension(filePath).ToLowerInvariant();
+            return extension switch
+            {
+                ".txt" => new TextFileLoader(),
+                ".md" => new MarkdownFileLoader(),
+                ".pdf" => new PdfFileLoader(),
+                ".html" => new HtmlFileLoader(),
+                _ => throw new NotSupportedException($"File type {extension} is not supported."),
+            };
         }
     }
 }

@@ -1,0 +1,56 @@
+
+using Microsoft.Data.Sqlite;
+using RagCap.Core.Capsule;
+using System.Threading.Tasks;
+
+namespace RagCap.Core.Capsule
+{
+    public class CapsuleManager : System.IDisposable
+    {
+        private readonly SqliteConnection _connection;
+
+        public CapsuleManager(string capsulePath)
+        {
+            _connection = new SqliteConnection($"Data Source={capsulePath}");
+            _connection.Open();
+        }
+
+        public void Initialize()
+        {
+            CapsuleSchema.InitializeSchema(_connection);
+        }
+
+        public async Task<long> AddSourceDocumentAsync(SourceDocument document)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "INSERT INTO sources (path, hash) VALUES ($path, $hash) RETURNING id;";
+            cmd.Parameters.AddWithValue("$path", document.Path);
+            cmd.Parameters.AddWithValue("$hash", document.Hash);
+            return (long)await cmd.ExecuteScalarAsync();
+        }
+
+        public async Task<long> AddChunkAsync(Chunk chunk)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "INSERT INTO chunks (source_id, text) VALUES ($source_id, $text) RETURNING id;";
+            cmd.Parameters.AddWithValue("$source_id", chunk.SourceDocumentId);
+            cmd.Parameters.AddWithValue("$text", chunk.Content);
+            return (long)await cmd.ExecuteScalarAsync();
+        }
+
+        public async Task AddEmbeddingAsync(Embedding embedding)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "INSERT INTO embeddings (chunk_id, vector, dimension) VALUES ($chunk_id, $vector, $dimension);";
+            cmd.Parameters.AddWithValue("$chunk_id", embedding.ChunkId);
+            cmd.Parameters.AddWithValue("$vector", embedding.Vector);
+            cmd.Parameters.AddWithValue("$dimension", embedding.Dimension);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public void Dispose()
+        {
+            _connection.Dispose();
+        }
+    }
+}

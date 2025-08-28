@@ -8,10 +8,10 @@ namespace Ragcap.Core.Loaders
         public bool CanLoad(string extension) => extension.Equals(".html", StringComparison.OrdinalIgnoreCase) 
                                                 || extension.Equals(".htm", StringComparison.OrdinalIgnoreCase);
 
-        public string LoadContent(string filePath)
+                public async Task<string> LoadAsync(string filePath)
         {
             var doc = new HtmlDocument();
-            doc.Load(filePath);
+            doc.LoadHtml(await File.ReadAllTextAsync(filePath));
             return doc.DocumentNode.InnerText;
         }
     }

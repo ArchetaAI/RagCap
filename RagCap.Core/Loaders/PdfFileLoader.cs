@@ -7,10 +7,13 @@ namespace Ragcap.Core.Loaders
     {
         public bool CanLoad(string extension) => extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase);
 
-        public string LoadContent(string filePath)
+                public Task<string> LoadAsync(string filePath)
         {
-            using var doc = PdfDocument.Open(filePath);
-            return string.Join("\n", doc.GetPages().Select(p => p.Text));
+            return Task.Run(() =>
+            {
+                using var doc = PdfDocument.Open(filePath);
+                return string.Join("\n", doc.GetPages().Select(p => p.Text));
+            });
         }
     }
 }
