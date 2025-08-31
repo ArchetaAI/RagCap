@@ -48,6 +48,23 @@ namespace RagCap.Core.Capsule
             await cmd.ExecuteNonQueryAsync();
         }
 
+        public async Task SetMetaValueAsync(string key, string value)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "INSERT OR REPLACE INTO meta (key, value) VALUES ($key, $value);";
+            cmd.Parameters.AddWithValue("$key", key);
+            cmd.Parameters.AddWithValue("$value", value);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<string> GetMetaValueAsync(string key)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT value FROM meta WHERE key = $key;";
+            cmd.Parameters.AddWithValue("$key", key);
+            return (string)await cmd.ExecuteScalarAsync();
+        }
+
         public void Dispose()
         {
             _connection.Dispose();

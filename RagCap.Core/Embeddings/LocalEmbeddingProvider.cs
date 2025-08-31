@@ -1,4 +1,5 @@
 
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace RagCap.Core.Embeddings
@@ -15,8 +16,9 @@ namespace RagCap.Core.Embeddings
             _embeddingService = new LocalEmbeddingService(modelPath, vocabPath);
         }
 
-        public Task<float[]> GenerateEmbeddingAsync(string text)
+        public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(_embeddingService.GenerateEmbedding(text));
         }
     }
