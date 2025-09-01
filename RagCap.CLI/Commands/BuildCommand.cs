@@ -13,57 +13,54 @@ namespace RagCap.CLI.Commands
     {
         public BuildCommand() : base("build", "Build a new RagCap capsule from a set of source documents.")
         {
-            var capsulePathArgument = new Argument<string>("capsule-path", "The path to the .ragcap file to create.");
-            var sourcePathArgument = new Argument<string>("source-path", "The path to the source documents.");
+            var inputOption = new Option<string>("--input", "The path to the source documents.");
+            var outputOption = new Option<string>("--output", "The path to the .ragcap file to create.");
+            var providerOption = new Option<string>("--provider", () => "local", "The embedding provider to use.");
+            var modelOption = new Option<string>("--model", () => null, "The embedding model to use.");
 
-            AddArgument(capsulePathArgument);
-            AddArgument(sourcePathArgument);
+            AddOption(inputOption);
+            AddOption(outputOption);
+            AddOption(providerOption);
+            AddOption(modelOption);
 
-            this.SetHandler(async (capsulePath, sourcePath) =>
+            this.SetHandler(async (input, output, provider, model) =>
             {
-                await HandleBuild(capsulePath, sourcePath);
-            }, capsulePathArgument, sourcePathArgument);
+                await HandleBuild(output, input, provider, model);
+            }, inputOption, outputOption, providerOption, modelOption);
         }
 
-        private async Task HandleBuild(string capsulePath, string sourcePath)
+        private async Task HandleBuild(string capsulePath, string sourcePath, string provider, string model)
         {
             using (var capsuleManager = new CapsuleManager(capsulePath))
             {
                 capsuleManager.Initialize();
 
-                var embeddingProvider = new LocalEmbeddingProvider();
-
-                var files = Directory.GetFiles(sourcePath, "*", SearchOption.AllDirectories);
-
-                foreach (var file in files)
+                IEmbeddingProvider embeddingProvider;
+                if (provider.Equals("api", StringComparison.OrdinalIgnoreCase))
                 {
-                    var loader = FileLoaderFactory.GetLoader(file);
-                    var content = await loader.LoadAsync(file);
-
-                    var sourceDocument = new SourceDocument
+                    var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY");
+                    if (string.IsNullOrEmpty(apiKey))
                     {
-                        Path = file,
-                        Hash = ""
-                    };
-                    var sourceDocumentId = await capsuleManager.AddSourceDocumentAsync(sourceDocument);
-
-                    var chunks = Chunker.ChunkText(content, 1000, 100);
-
-                    foreach (var chunk in chunks)
-                    {
-                        chunk.SourceDocumentId = sourceDocumentId.ToString();
-                        var chunkId = await capsuleManager.AddChunkAsync(chunk);
-
-                        var embedding = await embeddingProvider.GenerateEmbeddingAsync(chunk.Content);
-                        var embeddingRecord = new Embedding
-                        {
-                            ChunkId = chunkId.ToString(),
-                            Vector = embedding,
-                            Dimension = embedding.Length
-                        };
-                        await capsuleManager.AddEmbeddingAsync(embeddingRecord);
+                        Console.WriteLine("Error: RAGCAP_API_KEY environment variable must be set when using the API provider.");
+                        return;
                     }
+                    embeddingProvider = new ApiEmbeddingProvider(model, apiKey);
                 }
+                else
+                {
+                    embeddingProvider = new LocalEmbeddingProvider();
+                }
+
+                await capsuleManager.SetMetaValueAsync("embedding_provider", provider);
+                if (!string.IsNullOrEmpty(model))
+                {
+                    await capsuleManager.SetMetaValueAsync("embedding_model", model);
+                }
+
+                var pipeline = new Core.Pipeline.BuildPipeline(capsuleManager, embeddingProvider);
+                await pipeline.RunAsync(sourcePath);
+
+                Console.WriteLine($"Capsule saved: {capsulePath}");
             }
         }
 
