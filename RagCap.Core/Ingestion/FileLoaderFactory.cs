@@ -1,5 +1,5 @@
-using RagCap.Core.Loaders;
 using System.IO;
+using RagCap.Core.Ingestion;
 
 namespace RagCap.Core.Ingestion
 {

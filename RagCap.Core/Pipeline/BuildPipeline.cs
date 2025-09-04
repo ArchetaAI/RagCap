@@ -33,7 +33,7 @@ namespace RagCap.Core.Pipeline
                 try
                 {
                     var loader = FileLoaderFactory.GetLoader(file);
-                    var content = await loader.LoadAsync(file);
+                    var content = loader.LoadContent(file);
 
                     var sourceDocument = new SourceDocument
                     {

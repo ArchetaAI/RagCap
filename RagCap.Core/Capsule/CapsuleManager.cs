@@ -10,10 +10,14 @@ namespace RagCap.Core.Capsule
         private readonly SqliteConnection _connection;
         public SqliteConnection Connection => _connection;
 
-        public CapsuleManager(string capsulePath)
+        public CapsuleManager(string capsulePath) : this(new SqliteConnection($"Data Source={capsulePath}"))
         {
-            _connection = new SqliteConnection($"Data Source={capsulePath}");
             _connection.Open();
+        }
+
+        public CapsuleManager(SqliteConnection connection)
+        {
+            _connection = connection;
         }
 
         public void Initialize()
@@ -43,8 +47,12 @@ namespace RagCap.Core.Capsule
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "INSERT INTO embeddings (chunk_id, vector, dimension) VALUES ($chunk_id, $vector, $dimension);";
+
+            var vectorBytes = new byte[embedding.Vector.Length * 4];
+            Buffer.BlockCopy(embedding.Vector, 0, vectorBytes, 0, vectorBytes.Length);
+
             cmd.Parameters.AddWithValue("$chunk_id", embedding.ChunkId);
-            cmd.Parameters.AddWithValue("$vector", embedding.Vector);
+            cmd.Parameters.AddWithValue("$vector", vectorBytes);
             cmd.Parameters.AddWithValue("$dimension", embedding.Dimension);
             await cmd.ExecuteNonQueryAsync();
         }

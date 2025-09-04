@@ -41,8 +41,7 @@ namespace RagCap.Core.Embeddings
             var tokens = new List<string>();
             if (string.IsNullOrWhiteSpace(text)) return tokens;
 
-            var split = text.Split(new[] { ' ', '	', '
-', '' }, StringSplitOptions.RemoveEmptyEntries);
+            var split = text.Split(new[] { " ", "\t", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var word in split)
             {
