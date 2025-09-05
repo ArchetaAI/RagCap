@@ -1,13 +1,9 @@
-
-
 using RagCap.Core.Capsule;
 using RagCap.Core.Embeddings;
-using RagCap.Core.Ingestion;
-using RagCap.Core.Processing;
+using RagCap.Core.Pipeline;
 using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace RagCap.CLI.Commands
@@ -71,44 +67,11 @@ namespace RagCap.CLI.Commands
                     return;
                 }
 
-                // Record metadata
                 await capsuleManager.SetMetaValueAsync("embedding_provider", provider);
                 await capsuleManager.SetMetaValueAsync("embedding_model", modelName);
 
-                var loader = FileLoaderFactory.GetLoader(sourceFile);
-                var content = await loader.LoadAsync(sourceFile);
-
-                var sourceDocument = new SourceDocument
-                {
-                    Path = sourceFile,
-                    Hash = "" // Placeholder for content hash
-                };
-                var sourceDocumentId = await capsuleManager.AddSourceDocumentAsync(sourceDocument);
-
-                var chunks = Chunker.ChunkText(content, 1000, 100);
-                var existingDimension = await capsuleManager.GetMetaValueAsync("embedding_dimension");
-
-                foreach (var chunk in chunks)
-                {
-                    chunk.SourceDocumentId = sourceDocumentId.ToString();
-                    var chunkId = await capsuleManager.AddChunkAsync(chunk);
-
-                    var embedding = await embeddingProvider.GenerateEmbeddingAsync(chunk.Content, cancellationToken);
-
-                    if (string.IsNullOrEmpty(existingDimension))
-                    {
-                        await capsuleManager.SetMetaValueAsync("embedding_dimension", embedding.Length.ToString());
-                        existingDimension = embedding.Length.ToString(); // Avoid re-setting in the same run
-                    }
-
-                    var embeddingRecord = new Embedding
-                    {
-                        ChunkId = chunkId.ToString(),
-                        Vector = embedding,
-                        Dimension = embedding.Length
-                    };
-                    await capsuleManager.AddEmbeddingAsync(embeddingRecord);
-                }
+                var pipeline = new BuildPipeline(capsuleManager, embeddingProvider);
+                await pipeline.RunAsync(sourceFile);
 
                 Console.WriteLine($"Successfully embedded '{sourceFile}' into '{capsulePath}' using the '{provider}' provider.");
             }
@@ -120,4 +83,3 @@ namespace RagCap.CLI.Commands
         }
     }
 }
-

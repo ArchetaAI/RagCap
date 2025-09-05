@@ -1,5 +1,7 @@
 
-using Microsoft.Data.Sqlite;
+using RagCap.Core.Capsule;
+using RagCap.Core.Embeddings;
+using RagCap.Core.Pipeline;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,48 +9,51 @@ using System.Threading.Tasks;
 
 namespace RagCap.Core.Search
 {
-    public class VectorSearcher
+    public class VectorSearcher : ISearcher
     {
-        private readonly SqliteConnection _connection;
+        private readonly CapsuleManager capsuleManager;
+        private readonly IEmbeddingProvider embeddingProvider;
 
-        public VectorSearcher(SqliteConnection connection)
+        public VectorSearcher(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider)
         {
-            _connection = connection;
+            this.capsuleManager = capsuleManager;
+            this.embeddingProvider = embeddingProvider;
         }
 
-        public async Task<IEnumerable<(long chunk_id, float score)>> SearchAsync(float[] queryEmbedding, int topK)
+        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
         {
-            var results = new List<(long chunk_id, float score)>();
+            var queryEmbedding = await embeddingProvider.GenerateEmbeddingAsync(query);
 
-            using var command = _connection.CreateCommand();
-            command.CommandText = "SELECT chunk_id, vector FROM embeddings";
+            var results = new List<SearchResult>();
+
+            using var connection = capsuleManager.Connection;
+            await connection.OpenAsync();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT c.id, s.path, c.text, e.vector
+                FROM embeddings e
+                JOIN chunks c ON c.id = e.chunk_id
+                JOIN source_documents s ON s.id = c.source_document_id";
 
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                var chunkId = reader.GetInt64(0);
-                var vector = (byte[])reader.GetValue(1);
-
+                var vector = (byte[])reader.GetValue(3);
                 var floatVector = new float[vector.Length / 4];
                 Buffer.BlockCopy(vector, 0, floatVector, 0, vector.Length);
 
-                var score = CosineSimilarity(queryEmbedding, floatVector);
-                results.Add((chunkId, score));
+                results.Add(new SearchResult
+                {
+                    ChunkId = reader.GetInt32(0),
+                    Source = reader.GetString(1),
+                    Text = reader.GetString(2),
+                    Score = SimilarityMetrics.CosineSimilarity(queryEmbedding, floatVector)
+                });
             }
 
-            return results.OrderByDescending(r => r.score).Take(topK);
-        }
-
-        private float CosineSimilarity(float[] vec1, float[] vec2)
-        {
-            var dotProduct = vec1.Zip(vec2, (a, b) => a * b).Sum();
-            var norm1 = Math.Sqrt(vec1.Sum(x => x * x));
-            var norm2 = Math.Sqrt(vec2.Sum(x => x * x));
-
-            if (norm1 == 0 || norm2 == 0)
-                return 0;
-
-            return (float)(dotProduct / (norm1 * norm2));
+            return results.OrderByDescending(r => r.Score).Take(topK);
         }
     }
 }
+

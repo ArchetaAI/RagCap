@@ -1,32 +1,49 @@
 
-using Microsoft.Data.Sqlite;
+using RagCap.Core.Capsule;
+using RagCap.Core.Pipeline;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace RagCap.Core.Search
 {
-    public class BM25Searcher
+    public class BM25Searcher : ISearcher
     {
-        private readonly SqliteConnection _connection;
+        private readonly CapsuleManager capsuleManager;
 
-        public BM25Searcher(SqliteConnection connection)
+        public BM25Searcher(CapsuleManager capsuleManager)
         {
-            _connection = connection;
+            this.capsuleManager = capsuleManager;
         }
 
-        public async Task<IEnumerable<(long chunk_id, float score)>> SearchAsync(string query, int topK)
+        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
         {
-            var results = new List<(long chunk_id, float score)>();
+            var results = new List<SearchResult>();
 
-            using var command = _connection.CreateCommand();
-            command.CommandText = "SELECT rowid, bm25(chunks_fts) FROM chunks_fts WHERE chunks_fts MATCH $query ORDER BY bm25(chunks_fts) LIMIT $limit";
+            using var connection = capsuleManager.Connection;
+            await connection.OpenAsync();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT c.id, s.path, c.text, bm25(chunks_fts) as score
+                FROM chunks_fts
+                JOIN chunks c ON c.id = chunks_fts.rowid
+                JOIN source_documents s ON s.id = c.source_document_id
+                WHERE chunks_fts MATCH $query 
+                ORDER BY score 
+                LIMIT $limit";
             command.Parameters.AddWithValue("$query", query);
             command.Parameters.AddWithValue("$limit", topK);
 
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
-                results.Add((reader.GetInt64(0), (float)reader.GetDouble(1)));
+                results.Add(new SearchResult
+                {
+                    ChunkId = reader.GetInt32(0),
+                    Source = reader.GetString(1),
+                    Text = reader.GetString(2),
+                    Score = reader.GetFloat(3)
+                });
             }
 
             return results;

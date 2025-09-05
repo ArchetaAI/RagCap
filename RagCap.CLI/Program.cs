@@ -9,6 +9,7 @@ root.AddCommand(ChunkCommand.Create());
 root.AddCommand(BuildCommand.Create());
 root.AddCommand(EmbedCommand.Create());
 root.AddCommand(InspectCommand.Create());
+root.AddCommand(SearchCommand.Create());
 
 
 return await root.InvokeAsync(args);
