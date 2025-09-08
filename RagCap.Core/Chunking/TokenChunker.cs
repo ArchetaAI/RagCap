@@ -18,7 +18,8 @@ namespace RagCap.Core.Chunking
         public TokenChunker(int maxTokens = 512, int overlapTokens = 50, bool preserveParagraphs = true)
         {
             _maxTokens = maxTokens;
-            _overlapTokens = overlapTokens;
+            // Ensure overlap is less than maxTokens
+            _overlapTokens = Math.Min(overlapTokens, maxTokens / 2);
             _preserveParagraphs = preserveParagraphs;
             _tokenizer = new Tokenizer();
             _preprocessor = new Preprocessor();
@@ -84,11 +85,12 @@ namespace RagCap.Core.Chunking
                     TokenCount = chunkTokens.Count
                 });
 
-                start += _maxTokens - _overlapTokens;
-                if (start >= tokenCount && tokenCount > _maxTokens) 
+                if (end == tokenCount)
                 {
-                    start = tokenCount - _overlapTokens > 0 ? tokenCount - _overlapTokens : 0;
+                    break;
                 }
+
+                start += _maxTokens - _overlapTokens;
             }
             return chunks;
         }

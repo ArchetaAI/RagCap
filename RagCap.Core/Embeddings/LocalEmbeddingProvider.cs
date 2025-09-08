@@ -1,4 +1,6 @@
 
+using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,8 +13,9 @@ namespace RagCap.Core.Embeddings
         public LocalEmbeddingProvider()
         {
             // Assuming the model and vocab files are in the Resources/Models directory
-            string modelPath = "Resources/Models/model.onnx";
-            string vocabPath = "Resources/Models/vocab.txt";
+            var assemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var modelPath = Path.Combine(assemblyLocation, "models", "all-MiniLM-L6-v2", "model.onnx");
+            var vocabPath = Path.Combine(assemblyLocation, "models", "all-MiniLM-L6-v2", "vocab.txt");
             _embeddingService = new LocalEmbeddingService(modelPath, vocabPath);
         }
 

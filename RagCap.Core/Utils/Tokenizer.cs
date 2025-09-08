@@ -7,7 +7,7 @@ namespace RagCap.Core.Utils
     public class Tokenizer
     {
         // A simple regex for tokenization. This can be improved later.
-        private static readonly Regex _wordRegex = new Regex(@"\w+|[^\w\s]", RegexOptions.Compiled);
+        private static readonly Regex _wordRegex = new Regex(@"\S+\s*", RegexOptions.Compiled);
 
         public int CountTokens(string text)
         {

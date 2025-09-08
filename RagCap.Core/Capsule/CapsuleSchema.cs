@@ -40,6 +40,11 @@ namespace RagCap.Core.Capsule
                 FOREIGN KEY (chunk_id) REFERENCES chunks(id)
             );
 
+            CREATE TABLE IF NOT EXISTS meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+
                         CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(text, content='chunks', content_rowid='id');
 
             CREATE TRIGGER IF NOT EXISTS chunks_after_insert AFTER INSERT ON chunks BEGIN

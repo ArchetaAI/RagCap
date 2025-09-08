@@ -34,7 +34,7 @@ namespace RagCap.Core.Search
                 SELECT c.id, s.path, c.text, e.vector
                 FROM embeddings e
                 JOIN chunks c ON c.id = e.chunk_id
-                JOIN source_documents s ON s.id = c.source_document_id";
+                JOIN sources s ON s.id = c.source_id";
 
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())

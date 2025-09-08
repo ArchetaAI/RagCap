@@ -2,6 +2,7 @@ using RagCap.Core.Capsule;
 using RagCap.Core.Chunking;
 using RagCap.Core.Embeddings;
 using RagCap.Core.Ingestion;
+using RagCap.Core.Utils;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -38,7 +39,7 @@ namespace RagCap.Core.Pipeline
                     var sourceDocument = new SourceDocument
                     {
                         Path = file,
-                        Hash = "",
+                        Hash = HashUtils.GetSha256Hash(content),
                         Content = content
                     };
                     var sourceDocumentId = await _capsuleManager.AddSourceDocumentAsync(sourceDocument);

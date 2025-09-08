@@ -12,7 +12,12 @@ namespace RagCap.Core.Capsule
 
         public CapsuleManager(string capsulePath) : this(new SqliteConnection($"Data Source={capsulePath}"))
         {
+            bool newCapsule = !File.Exists(capsulePath);
             _connection.Open();
+            if (newCapsule)
+            {
+                CapsuleSchema.InitializeSchema(_connection);
+            }
         }
 
         public CapsuleManager(SqliteConnection connection)
@@ -20,10 +25,7 @@ namespace RagCap.Core.Capsule
             _connection = connection;
         }
 
-        public void Initialize()
-        {
-            CapsuleSchema.InitializeSchema(_connection);
-        }
+        
 
         public async Task<long> AddSourceDocumentAsync(SourceDocument document)
         {

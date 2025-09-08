@@ -20,6 +20,7 @@ namespace RagCap.Core.Pipeline
 
         public async Task<IEnumerable<SearchResult>> RunAsync(string query, int topK, string mode)
         {
+            Console.WriteLine("Running SearchPipeline");
             var validator = new CapsuleValidator();
             var validationResult = validator.Validate(capsulePath);
             if (!validationResult.Success)

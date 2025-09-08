@@ -33,7 +33,7 @@ namespace RagCap.CLI.Commands
         {
             using (var capsuleManager = new CapsuleManager(capsulePath))
             {
-                capsuleManager.Initialize();
+                
 
                 IEmbeddingProvider embeddingProvider;
                 if (provider.Equals("api", StringComparison.OrdinalIgnoreCase))

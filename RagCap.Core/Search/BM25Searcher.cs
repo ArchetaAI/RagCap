@@ -27,7 +27,7 @@ namespace RagCap.Core.Search
                 SELECT c.id, s.path, c.text, bm25(chunks_fts) as score
                 FROM chunks_fts
                 JOIN chunks c ON c.id = chunks_fts.rowid
-                JOIN source_documents s ON s.id = c.source_document_id
+                JOIN sources s ON s.id = c.source_id
                 WHERE chunks_fts MATCH $query 
                 ORDER BY score 
                 LIMIT $limit";
