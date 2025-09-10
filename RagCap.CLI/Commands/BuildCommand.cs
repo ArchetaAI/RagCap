@@ -1,47 +1,50 @@
-
 using RagCap.Core.Capsule;
 using RagCap.Core.Embeddings;
 using RagCap.Core.Ingestion;
 using RagCap.Core.Processing;
-using System.CommandLine;
+using Spectre.Console.Cli;
+using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
+using Spectre.Console;
 
 namespace RagCap.CLI.Commands
 {
-    public class BuildCommand : Command
+    public class BuildCommand : AsyncCommand<BuildCommand.Settings>
     {
-        public BuildCommand() : base("build", "Build a new RagCap capsule from a set of source documents.")
+        public sealed class Settings : CommandSettings
         {
-            var inputOption = new Option<string>("--input", "The path to the source documents.");
-            var outputOption = new Option<string>("--output", "The path to the .ragcap file to create.");
-            var providerOption = new Option<string>("--provider", () => "local", "The embedding provider to use.");
-            var modelOption = new Option<string>("--model", () => null, "The embedding model to use.");
+            [CommandOption("--input")]
+            public string Input { get; set; }
 
-            AddOption(inputOption);
-            AddOption(outputOption);
-            AddOption(providerOption);
-            AddOption(modelOption);
+            [CommandOption("--output")]
+            public string Output { get; set; }
 
-            this.SetHandler(async (input, output, provider, model) =>
-            {
-                await HandleBuild(output, input, provider, model);
-            }, inputOption, outputOption, providerOption, modelOption);
+            [CommandOption("--provider")]
+            [DefaultValue("local")]
+            public string Provider { get; set; }
+
+            [CommandOption("--model")]
+            public string Model { get; set; }
+        }
+
+        public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+        {
+            await HandleBuild(settings.Output, settings.Input, settings.Provider, settings.Model);
+            return 0;
         }
 
         private async Task HandleBuild(string capsulePath, string sourcePath, string provider, string model)
         {
             using (var capsuleManager = new CapsuleManager(capsulePath))
             {
-                
-
                 IEmbeddingProvider embeddingProvider;
                 if (provider.Equals("api", StringComparison.OrdinalIgnoreCase))
                 {
                     var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY");
                     if (string.IsNullOrEmpty(apiKey))
                     {
-                        Console.WriteLine("Error: RAGCAP_API_KEY environment variable must be set when using the API provider.");
+                        AnsiConsole.MarkupLine("[red]Error: RAGCAP_API_KEY environment variable must be set when using the API provider.[/]");
                         return;
                     }
                     embeddingProvider = new ApiEmbeddingProvider(model, apiKey);
@@ -60,13 +63,8 @@ namespace RagCap.CLI.Commands
                 var pipeline = new Core.Pipeline.BuildPipeline(capsuleManager, embeddingProvider);
                 await pipeline.RunAsync(sourcePath);
 
-                Console.WriteLine($"Capsule saved: {capsulePath}");
+                AnsiConsole.MarkupLine($"[green]Capsule saved:[/] {capsulePath}");
             }
-        }
-
-        public static Command Create()
-        {
-            return new BuildCommand();
         }
     }
 }

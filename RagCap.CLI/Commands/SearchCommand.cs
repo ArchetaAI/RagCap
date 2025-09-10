@@ -1,40 +1,46 @@
-
 using RagCap.Core.Pipeline;
-using System;
-using System.CommandLine;
+using Spectre.Console.Cli;
+using System.ComponentModel;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Spectre.Console;
 
 namespace RagCap.CLI.Commands
 {
-    public class SearchCommand : Command
+    public class SearchCommand : AsyncCommand<SearchCommand.Settings>
     {
-        public SearchCommand() : base("search", "Search a RagCap capsule.")
+        public sealed class Settings : CommandSettings
         {
-            var capsuleArgument = new Argument<string>("capsule", "The path to the .ragcap file.");
-            var queryArgument = new Argument<string>("query", "The search query.");
+            [CommandArgument(0, "<capsule>")]
+            public string Capsule { get; set; }
 
-            var topKOption = new Option<int>("--top-k", () => 5, "The number of results to return.");
-            var modeOption = new Option<string>("--mode", () => "hybrid", "The search mode (vector, bm25, or hybrid).");
-            var jsonOption = new Option<bool>("--json", () => false, "Output the result as JSON.");
+            [CommandArgument(1, "<query>")]
+            public string Query { get; set; }
 
-            AddArgument(capsuleArgument);
-            AddArgument(queryArgument);
-            AddOption(topKOption);
-            AddOption(modeOption);
-            AddOption(jsonOption);
+            [CommandOption("--top-k")]
+            [DefaultValue(5)]
+            public int TopK { get; set; }
 
-            this.SetHandler(async (capsule, query, topK, mode, json) =>
-            {
-                await HandleSearch(capsule, query, topK, mode, json);
-            }, capsuleArgument, queryArgument, topKOption, modeOption, jsonOption);
+            [CommandOption("--mode")]
+            [DefaultValue("hybrid")]
+            public string Mode { get; set; }
+
+            [CommandOption("--json")]
+            [DefaultValue(false)]
+            public bool Json { get; set; }
+        }
+
+        public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+        {
+            await HandleSearch(settings.Capsule, settings.Query, settings.TopK, settings.Mode, settings.Json);
+            return 0;
         }
 
         private async Task HandleSearch(string capsule, string query, int topK, string mode, bool json)
         {
             if (!System.IO.File.Exists(capsule))
             {
-                Console.WriteLine($"Error: Capsule file not found at '{capsule}'");
+                AnsiConsole.MarkupLine($"[red]Error: Capsule file not found at '{capsule}'[/]");
                 return;
             }
 
@@ -46,27 +52,22 @@ namespace RagCap.CLI.Commands
                 if (json)
                 {
                     var jsonResult = JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true });
-                    Console.WriteLine(jsonResult);
+                    AnsiConsole.WriteLine(jsonResult);
                 }
                 else
                 {
                     foreach (var result in results)
                     {
-                        Console.WriteLine($"Result from '{result.Source}' (chunk {result.ChunkId}, score: {result.Score:F4}):");
-                        Console.WriteLine(result.Text);
-                        Console.WriteLine();
+                        AnsiConsole.WriteLine($"Result from '{result.Source}' (chunk {result.ChunkId}, score: {result.Score:F4}):");
+                        AnsiConsole.WriteLine(result.Text);
+                        AnsiConsole.WriteLine();
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                AnsiConsole.MarkupLine($"[red]Error: {ex.Message}[/]");
             }
-        }
-
-        public static Command Create()
-        {
-            return new SearchCommand();
         }
     }
 }

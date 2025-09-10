@@ -1,33 +1,35 @@
-
 using RagCap.Core.Pipeline;
-using System;
-using System.CommandLine;
+using Spectre.Console.Cli;
+using System.ComponentModel;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Spectre.Console;
 
 namespace RagCap.CLI.Commands
 {
-    public class InspectCommand : Command
+    public class InspectCommand : AsyncCommand<InspectCommand.Settings>
     {
-        public InspectCommand() : base("inspect", "Inspect a RagCap capsule.")
+        public sealed class Settings : CommandSettings
         {
-            var inputOption = new Option<string>("--input", "The path to the .ragcap file to inspect.");
-            var jsonOption = new Option<bool>("--json", () => false, "Output the result as JSON.");
+            [CommandArgument(0, "<input>")]
+            public string Input { get; set; }
 
-            AddOption(inputOption);
-            AddOption(jsonOption);
+            [CommandOption("--json")]
+            [DefaultValue(false)]
+            public bool Json { get; set; }
+        }
 
-            this.SetHandler(async (input, json) =>
-            {
-                await HandleInspect(input, json);
-            }, inputOption, jsonOption);
+        public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+        {
+            await HandleInspect(settings.Input, settings.Json);
+            return 0;
         }
 
         private async Task HandleInspect(string input, bool json)
         {
             if (!System.IO.File.Exists(input))
             {
-                Console.WriteLine($"Error: Capsule file not found at '{input}'");
+                AnsiConsole.MarkupLine($"[red]Error: Capsule file not found at '{input}'[/]");
                 return;
             }
 
@@ -37,23 +39,18 @@ namespace RagCap.CLI.Commands
             if (json)
             {
                 var jsonResult = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
-                Console.WriteLine(jsonResult);
+                AnsiConsole.WriteLine(jsonResult);
             }
             else
             {
-                Console.WriteLine($"Capsule: {result.CapsulePath}");
-                Console.WriteLine($"Provider: {result.Provider}");
-                Console.WriteLine($"Model: {result.Model}");
-                Console.WriteLine($"Dimension: {result.Dimension}");
-                Console.WriteLine($"Sources: {result.Sources}");
-                Console.WriteLine($"Chunks: {result.Chunks} (avg length {result.AvgChunkLength:F2} tokens)");
-                Console.WriteLine($"Embeddings: {result.Embeddings}");
+                AnsiConsole.WriteLine($"Capsule: {result.CapsulePath}");
+                AnsiConsole.WriteLine($"Provider: {result.Provider}");
+                AnsiConsole.WriteLine($"Model: {result.Model}");
+                AnsiConsole.WriteLine($"Dimension: {result.Dimension}");
+                AnsiConsole.WriteLine($"Sources: {result.Sources}");
+                AnsiConsole.WriteLine($"Chunks: {result.Chunks} (avg length {result.AvgChunkLength:F2} tokens)");
+                AnsiConsole.WriteLine($"Embeddings: {result.Embeddings}");
             }
-        }
-
-        public static Command Create()
-        {
-            return new InspectCommand();
         }
     }
 }

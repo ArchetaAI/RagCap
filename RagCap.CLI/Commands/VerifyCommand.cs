@@ -1,36 +1,32 @@
-using System.CommandLine;
 using RagCap.Core.Validation;
+using Spectre.Console.Cli;
+using System.Threading.Tasks;
+using Spectre.Console;
 
 namespace RagCap.CLI.Commands
 {
-    public static class VerifyCommand
+    public class VerifyCommand : AsyncCommand<VerifyCommand.Settings>
     {
-        public static Command Create()
+        public sealed class Settings : CommandSettings
         {
-            var cmd = new Command("verify", "Validate a .ragcap capsule file");
-            var fileArg = new Argument<string>("file", "Path to the capsule (.ragcap)");
+            [CommandArgument(0, "<file>")]
+            public string File { get; set; }
+        }
 
-            cmd.AddArgument(fileArg);
+        public override Task<int> ExecuteAsync(CommandContext context, Settings settings)
+        {
+            var validator = new CapsuleValidator();
+            var result = validator.Validate(settings.File);
 
-            cmd.SetHandler((string file) =>
+            if (result.Success)
             {
-                var validator = new CapsuleValidator();
-                var result = validator.Validate(file);
-
-                if (result.Success)
-                {
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"✔ {result.Message}");
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"✘ {result.Message}");
-                }
-                Console.ResetColor();
-            }, fileArg);
-
-            return cmd;
+                AnsiConsole.MarkupLine($"[green]✔ {result.Message}[/]");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[red]✘ {result.Message}[/]");
+            }
+            return Task.FromResult(0);
         }
     }
 }
