@@ -76,6 +76,42 @@ namespace RagCap.Core.Capsule
             return (string)await cmd.ExecuteScalarAsync();
         }
 
+        public async Task<Chunk?> GetChunkAsync(long chunkId)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT id, source_id, text FROM chunks WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", chunkId);
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return new Chunk
+                {
+                    Id = reader.GetInt64(0),
+                    SourceDocumentId = reader.GetInt64(1).ToString(),
+                    Content = reader.GetString(2)
+                };
+            }
+            return null;
+        }
+
+        public async Task<SourceDocument?> GetSourceDocumentAsync(long sourceId)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT id, path, hash FROM sources WHERE id = $id;";
+            cmd.Parameters.AddWithValue("$id", sourceId);
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return new SourceDocument
+                {
+                    Id = reader.GetInt64(0).ToString(),
+                    Path = reader.GetString(1),
+                    Hash = reader.GetString(2)
+                };
+            }
+            return null;
+        }
+
         public void Dispose()
         {
             _connection.Dispose();

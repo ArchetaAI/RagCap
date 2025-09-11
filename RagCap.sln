@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RagCap.Core", "RagCap.Core\RagCap.Core.csproj", "{8C720469-4A8D-431B-8D58-29EB2E729BE5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RagCap.Server", "RagCap.Server\RagCap.Server.csproj", "{0359BE32-6BFD-4176-BDDF-7014D83883AE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,18 @@ Global
 		{8C720469-4A8D-431B-8D58-29EB2E729BE5}.Release|x64.Build.0 = Release|Any CPU
 		{8C720469-4A8D-431B-8D58-29EB2E729BE5}.Release|x86.ActiveCfg = Release|Any CPU
 		{8C720469-4A8D-431B-8D58-29EB2E729BE5}.Release|x86.Build.0 = Release|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Debug|x64.Build.0 = Debug|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Debug|x86.Build.0 = Debug|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Release|x64.ActiveCfg = Release|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Release|x64.Build.0 = Release|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Release|x86.ActiveCfg = Release|Any CPU
+		{0359BE32-6BFD-4176-BDDF-7014D83883AE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
