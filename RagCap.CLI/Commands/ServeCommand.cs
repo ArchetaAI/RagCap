@@ -1,5 +1,6 @@
 
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -25,7 +26,7 @@ namespace RagCap.CLI.Commands
             public string Host { get; set; }
 
             [CommandOption("--log-level")]
-            [DefaultValue(LogLevel.Info)]
+            [DefaultValue(LogLevel.Information)]
             public LogLevel LogLevel { get; set; }
         }
 

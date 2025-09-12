@@ -45,7 +45,7 @@ public class AskCommand : AsyncCommand<AskCommand.Settings>
     {
         if (!File.Exists(settings.CapsulePath))
         {
-            AnsiConsole.MarkupLine($"[red]Error: Capsule file not found at '{settings.CapsulePath}'[/]");
+            AnsiConsole.WriteLine("Error: Capsule file not found");
             return 1;
         }
 
@@ -73,14 +73,13 @@ public class AskCommand : AsyncCommand<AskCommand.Settings>
             }
             else
             {
-                AnsiConsole.MarkupLine($"[green]Answer:[/] {answer}");
+                AnsiConsole.WriteLine($"Answer: {answer}");
                 if (sources.Any())
                 {
-                    AnsiConsole.MarkupLine("
-[yellow]Sources:[/]");
+                    AnsiConsole.WriteLine("Sources:");
                     foreach (var source in sources)
                     {
-                        AnsiConsole.MarkupLine($"- [cyan]{source.SourceDocumentId}[/] (Score: {source.Score:F4})");
+                        AnsiConsole.WriteLine($"- {source.SourceDocumentId} (Score: {source.Score:F4})");
                     }
                 }
             }
@@ -89,7 +88,7 @@ public class AskCommand : AsyncCommand<AskCommand.Settings>
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]An error occurred: {ex.Message}[/]");
+            AnsiConsole.WriteLine($"An error occurred: {ex.Message}");
             Debug.WriteLine(ex.ToString());
             return 1;
         }

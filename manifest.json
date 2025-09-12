@@ -1,0 +1,16 @@
+{
+  "Version": 1,
+  "CreatedAt": "2025-09-12T11:13:16.1447623Z",
+  "ExportHistory": [
+    {
+      "Format": "parquet",
+      "FilePath": "output.parquet",
+      "Timestamp": "2025-09-12T11:13:25.2766668Z"
+    },
+    {
+      "Format": "faiss",
+      "FilePath": "output.faiss",
+      "Timestamp": "2025-09-12T11:13:32.8699316Z"
+    }
+  ]
+}
