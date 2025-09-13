@@ -31,6 +31,40 @@ export RAGCAP_API_KEY="your_api_key"
 ragcap build --input ./my_docs --output my_capsule.ragcap --provider api --model "text-embedding-ada-002"
 ```
 
+### Using a Recipe File
+
+You can also use a `.ragcap.yml` recipe file to define the build configuration.
+
+```bash
+ragcap build --recipe .ragcap.yml
+```
+
+CLI flags will override the values in the recipe file.
+
+**Example `.ragcap.yml`:**
+
+```yaml
+sources:
+  - path: ./docs
+    type: markdown
+  - path: ./articles
+    type: pdf
+chunking:
+  size: 500
+  overlap: 50
+embeddings:
+  provider: onnx
+  model: MiniLM
+  dimension: 384
+preprocess:
+  boilerplate: true
+  preserve_code: true
+  flatten_tables: true
+  detect_language: true
+output:
+  path: mycapsule.ragcap
+```
+
 ### `ragcap inspect`
 
 Inspect a RagCap capsule to see its metadata and contents.

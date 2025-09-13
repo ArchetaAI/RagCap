@@ -2,8 +2,10 @@ using RagCap.Core.Capsule;
 using RagCap.Core.Chunking;
 using RagCap.Core.Embeddings;
 using RagCap.Core.Ingestion;
+using RagCap.Core.Processing;
 using RagCap.Core.Utils;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -14,17 +16,53 @@ namespace RagCap.Core.Pipeline
         private readonly CapsuleManager _capsuleManager;
         private readonly IEmbeddingProvider _embeddingProvider;
         private readonly TokenChunker _tokenChunker;
+        private readonly Preprocessor _preprocessor;
 
-        public BuildPipeline(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider)
+        public BuildPipeline(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider, Recipe recipe = null)
         {
             _capsuleManager = capsuleManager;
             _embeddingProvider = embeddingProvider;
-            _tokenChunker = new TokenChunker();
+
+            var chunkSize = recipe?.Chunking?.Size ?? 500;
+            var overlap = recipe?.Chunking?.Overlap ?? 50;
+            _tokenChunker = new TokenChunker(chunkSize, overlap);
+
+            var boilerplate = recipe?.Preprocess?.Boilerplate ?? true;
+            var preserveCode = recipe?.Preprocess?.Preserve_code ?? true;
+            var flattenTables = recipe?.Preprocess?.Flatten_tables ?? true;
+            var detectLanguage = recipe?.Preprocess?.Detect_language ?? true;
+            _preprocessor = new Preprocessor(boilerplate, preserveCode, flattenTables, detectLanguage);
         }
 
-        public async Task RunAsync(string inputPath)
+        public async Task RunAsync(string inputPath, List<string> sourcesFromRecipe = null)
         {
-            var files = Directory.GetFiles(inputPath, "*", SearchOption.AllDirectories);
+            var files = new List<string>();
+            if (sourcesFromRecipe != null && sourcesFromRecipe.Count > 0)
+            {
+                foreach (var source in sourcesFromRecipe)
+                {
+                    if (Directory.Exists(source))
+                    {
+                        files.AddRange(Directory.GetFiles(source, "*", SearchOption.AllDirectories));
+                    }
+                    else if (File.Exists(source))
+                    {
+                        files.Add(source);
+                    }
+                }
+            }
+            else
+            {
+                if (Directory.Exists(inputPath))
+                {
+                    files.AddRange(Directory.GetFiles(inputPath, "*", SearchOption.AllDirectories));
+                }
+                else if (File.Exists(inputPath))
+                {
+                    files.Add(inputPath);
+                }
+            }
+
             int sources = 0;
             int chunks = 0;
             int embeddings = 0;
@@ -35,6 +73,7 @@ namespace RagCap.Core.Pipeline
                 {
                     var loader = FileLoaderFactory.GetLoader(file);
                     var content = loader.LoadContent(file);
+                    content = _preprocessor.Process(content);
 
                     var sourceDocument = new SourceDocument
                     {
