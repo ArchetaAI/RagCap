@@ -9,11 +9,14 @@ using System.Threading.Tasks;
 using Spectre.Console;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
+using RagCap.Core.Pipeline;
 
 namespace RagCap.CLI.Commands
 {
     public class BuildCommand : AsyncCommand<BuildCommand.Settings>
     {
+        private readonly IBuildPipeline _buildPipeline;
+
         public sealed class Settings : CommandSettings
         {
             [CommandOption("--input")]
@@ -31,6 +34,15 @@ namespace RagCap.CLI.Commands
 
             [CommandOption("--recipe")]
             public string RecipePath { get; set; }
+        }
+
+        public BuildCommand(IBuildPipeline buildPipeline)
+        {
+            _buildPipeline = buildPipeline;
+        }
+
+        public BuildCommand() : this(null)
+        {
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
@@ -113,7 +125,7 @@ namespace RagCap.CLI.Commands
                     await capsuleManager.SetMetaValueAsync("recipe", recipeContent);
                 }
 
-                var pipeline = new Core.Pipeline.BuildPipeline(capsuleManager, embeddingProvider, recipe);
+                var pipeline = _buildPipeline ?? new BuildPipeline(capsuleManager, embeddingProvider, recipe);
                 var sourcesFromRecipe = recipe?.Sources?.Select(s => s.Path).ToList();
                 await pipeline.RunAsync(sourcePath, sourcesFromRecipe);
 

@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace RagCap.Core.Pipeline
 {
-    public class BuildPipeline
+    public class BuildPipeline : IBuildPipeline
     {
         private readonly CapsuleManager _capsuleManager;
         private readonly IEmbeddingProvider _embeddingProvider;
