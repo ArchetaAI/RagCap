@@ -106,6 +106,26 @@ ragcap search <capsule_path> "<query>" [--top-k <k>] [--mode <mode>] [--json]
 ragcap search my_capsule.ragcap "what is ragcap?" --top-k 3
 ```
 
+### `ragcap diff`
+
+Compare two RagCap capsules and highlight the differences.
+
+```bash
+ragcap diff <capsule1_path> <capsule2_path> [--json]
+```
+
+**Arguments:**
+
+*   `<capsule1_path>`: The path to the first `.ragcap` file.
+*   `<capsule2_path>`: The path to the second `.ragcap` file.
+*   `--json` (optional): Output the result as JSON.
+
+**Example:**
+
+```bash
+ragcap diff old_capsule.ragcap new_capsule.ragcap
+```
+
 ## Python Adapter
 
 A Python adapter is available for integrating RagCap with Python applications.
