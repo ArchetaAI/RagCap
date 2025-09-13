@@ -71,3 +71,67 @@ ragcap search <capsule_path> "<query>" [--top-k <k>] [--mode <mode>] [--json]
 ```bash
 ragcap search my_capsule.ragcap "what is ragcap?" --top-k 3
 ```
+
+## Python Adapter
+
+A Python adapter is available for integrating RagCap with Python applications.
+
+### Installation
+
+```bash
+pip install -e adapters/python
+```
+
+### Usage
+
+```python
+from ragcap import Capsule
+
+# Open a RagCap capsule
+cap = Capsule("knowledge.ragcap")
+
+# Search the capsule
+results = cap.search("neural networks")
+print(results)
+
+# Ask a question
+answer = cap.ask("What are neural networks?")
+print(answer)
+
+# Export the capsule
+cap.export("knowledge.parquet", format="parquet")
+```
+
+## JavaScript Adapter
+
+A JavaScript adapter is available for integrating RagCap with Node.js applications.
+
+### Installation
+
+```bash
+npm install ./adapters/javascript
+```
+
+### Usage
+
+```javascript
+const { Capsule } = require('ragcap-js');
+
+async function main() {
+    // Open a RagCap capsule
+    const cap = new Capsule('knowledge.ragcap');
+
+    // Search the capsule
+    const results = await cap.search('neural networks');
+    console.log(results);
+
+    // Ask a question
+    const answer = await cap.ask('What are neural networks?');
+    console.log(answer);
+
+    // Export the capsule
+    await cap.export('knowledge.parquet', 'parquet');
+}
+
+main();
+```
