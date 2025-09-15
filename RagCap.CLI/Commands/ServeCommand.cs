@@ -1,6 +1,5 @@
 
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
 using System.ComponentModel;
@@ -15,7 +14,7 @@ namespace RagCap.CLI.Commands
         public sealed class Settings : CommandSettings
         {
             [CommandArgument(0, "<CAPSULE_PATH>")]
-            public string CapsulePath { get; set; }
+            public required string CapsulePath { get; set; }
 
             [CommandOption("--port")]
             [DefaultValue(5000)]
@@ -23,7 +22,7 @@ namespace RagCap.CLI.Commands
 
             [CommandOption("--host")]
             [DefaultValue("localhost")]
-            public string Host { get; set; }
+            public string Host { get; set; } = "localhost";
 
             [CommandOption("--log-level")]
             [DefaultValue(LogLevel.Information)]

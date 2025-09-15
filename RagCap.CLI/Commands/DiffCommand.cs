@@ -11,10 +11,10 @@ namespace RagCap.CLI.Commands
         public sealed class Settings : CommandSettings
         {
             [CommandArgument(0, "<CAPSULE1_PATH>")]
-            public string Capsule1Path { get; set; }
+            public required string Capsule1Path { get; set; }
 
             [CommandArgument(1, "<CAPSULE2_PATH>")]
-            public string Capsule2Path { get; set; }
+            public required string Capsule2Path { get; set; }
 
             [CommandOption("--json")]
             public bool Json { get; set; }
@@ -40,8 +40,8 @@ namespace RagCap.CLI.Commands
 
         private void PrintHumanReadable(DiffResult result, string capsule1, string capsule2)
         {
-            AnsiConsole.MarkupLine($"[bold]Comparing:[/] {capsule1}");
-            AnsiConsole.MarkupLine($"[bold]To:[/]      {capsule2}\n");
+            AnsiConsole.MarkupLine($"[bold]Comparing:[/]{capsule1}");
+            AnsiConsole.MarkupLine($"[bold]To:[/]{capsule2}\n");
 
             var table = new Table().Expand().Border(TableBorder.None);
             table.AddColumn("[bold]Category[/]");
@@ -51,7 +51,7 @@ namespace RagCap.CLI.Commands
 
             foreach (var item in result.Manifest)
             {
-                table.AddRow("Manifest", item.Key, item.Value.Item1, item.Value.Item2);
+                table.AddRow("Manifest", item.Key, item.Value.Item1 ?? string.Empty, item.Value.Item2 ?? string.Empty);
             }
 
             if (result.AddedSources.Any())

@@ -12,10 +12,10 @@ namespace RagCap.CLI.Commands
         public sealed class Settings : CommandSettings
         {
             [CommandArgument(0, "<capsule>")]
-            public string Capsule { get; set; }
+            public required string Capsule { get; set; }
 
             [CommandArgument(1, "<query>")]
-            public string Query { get; set; }
+            public required string Query { get; set; }
 
             [CommandOption("--top-k")]
             [DefaultValue(5)]
@@ -23,7 +23,7 @@ namespace RagCap.CLI.Commands
 
             [CommandOption("--mode")]
             [DefaultValue("hybrid")]
-            public string Mode { get; set; }
+            public string Mode { get; set; } = "hybrid";
 
             [CommandOption("--json")]
             [DefaultValue(false)]
@@ -59,7 +59,7 @@ namespace RagCap.CLI.Commands
                     foreach (var result in results)
                     {
                         AnsiConsole.WriteLine($"Result from '{result.Source}' (chunk {result.ChunkId}, score: {result.Score:F4}):");
-                        AnsiConsole.WriteLine(result.Text);
+                        AnsiConsole.WriteLine(result.Text ?? string.Empty);
                         AnsiConsole.WriteLine();
                     }
                 }

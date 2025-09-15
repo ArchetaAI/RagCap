@@ -2,6 +2,7 @@ using RagCap.Core.Capsule;
 using RagCap.Core.Embeddings;
 using RagCap.Core.Ingestion;
 using RagCap.Core.Processing;
+using RagCap.Core.Recipes;
 using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.IO;
@@ -15,39 +16,34 @@ namespace RagCap.CLI.Commands
 {
     public class BuildCommand : AsyncCommand<BuildCommand.Settings>
     {
-        private readonly IBuildPipeline _buildPipeline;
-
         public sealed class Settings : CommandSettings
         {
             [CommandOption("--input")]
-            public string Input { get; set; }
+            public string? Input { get; set; }
 
             [CommandOption("--output")]
-            public string Output { get; set; }
+            public string? Output { get; set; }
 
             [CommandOption("--provider")]
             [DefaultValue("local")]
-            public string Provider { get; set; }
+            public string Provider { get; set; } = "local";
 
             [CommandOption("--model")]
-            public string Model { get; set; }
+            public string? Model { get; set; }
 
             [CommandOption("--recipe")]
-            public string RecipePath { get; set; }
-        }
+            public string? RecipePath { get; set; }
 
-        public BuildCommand(IBuildPipeline buildPipeline)
-        {
-            _buildPipeline = buildPipeline;
-        }
+            [CommandOption("--api-version")]
+            public string? ApiVersion { get; set; }
 
-        public BuildCommand() : this(null)
-        {
+            [CommandOption("--endpoint")]
+            public string? Endpoint { get; set; }
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
         {
-            Recipe recipe = null;
+            Recipe? recipe = null;
             if (!string.IsNullOrEmpty(settings.RecipePath))
             {
                 if (!File.Exists(settings.RecipePath))
@@ -76,6 +72,8 @@ namespace RagCap.CLI.Commands
             var outputPath = settings.Output ?? recipe?.Output?.Path;
             var provider = settings.Provider ?? recipe?.Embeddings?.Provider ?? "local";
             var model = settings.Model ?? recipe?.Embeddings?.Model;
+            var apiVersion = settings.ApiVersion ?? recipe?.Embeddings?.ApiVersion;
+            var endpoint = settings.Endpoint ?? recipe?.Embeddings?.Endpoint;
 
             if (string.IsNullOrEmpty(inputPath))
             {
@@ -89,11 +87,11 @@ namespace RagCap.CLI.Commands
                 return 1;
             }
 
-            await HandleBuild(outputPath, inputPath, provider, model, recipe, settings.RecipePath);
+            await HandleBuild(outputPath, inputPath, provider, model, apiVersion, endpoint, recipe, settings.RecipePath);
             return 0;
         }
 
-        private async Task HandleBuild(string capsulePath, string sourcePath, string provider, string model, Recipe recipe, string recipePath)
+        private async Task HandleBuild(string capsulePath, string sourcePath, string provider, string? model, string? apiVersion, string? endpoint, Recipe? recipe, string? recipePath)
         {
             using (var capsuleManager = new CapsuleManager(capsulePath))
             {
@@ -106,7 +104,7 @@ namespace RagCap.CLI.Commands
                         AnsiConsole.MarkupLine("[red]Error: RAGCAP_API_KEY environment variable must be set when using the API provider.[/]");
                         return;
                     }
-                    embeddingProvider = new ApiEmbeddingProvider(model, apiKey);
+                    embeddingProvider = new ApiEmbeddingProvider(apiKey, model, endpoint, apiVersion);
                 }
                 else
                 {
@@ -118,6 +116,14 @@ namespace RagCap.CLI.Commands
                 {
                     await capsuleManager.SetMetaValueAsync("embedding_model", model);
                 }
+                if (!string.IsNullOrEmpty(apiVersion))
+                {
+                    await capsuleManager.SetMetaValueAsync("embedding_api_version", apiVersion);
+                }
+                if (!string.IsNullOrEmpty(endpoint))
+                {
+                    await capsuleManager.SetMetaValueAsync("embedding_endpoint", endpoint);
+                }
 
                 if (recipe != null && !string.IsNullOrEmpty(recipePath))
                 {
@@ -125,7 +131,7 @@ namespace RagCap.CLI.Commands
                     await capsuleManager.SetMetaValueAsync("recipe", recipeContent);
                 }
 
-                var pipeline = _buildPipeline ?? new BuildPipeline(capsuleManager, embeddingProvider, recipe);
+                var pipeline = new BuildPipeline(capsuleManager, embeddingProvider, recipe);
                 var sourcesFromRecipe = recipe?.Sources?.Select(s => s.Path).ToList();
                 await pipeline.RunAsync(sourcePath, sourcesFromRecipe);
 

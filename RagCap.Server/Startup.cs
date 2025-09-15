@@ -37,6 +37,8 @@ namespace RagCap.Server
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapGet("/", () => "RagCap Server is running!");
+
                 if (app is WebApplication webApp)
                 {
                     webApp.MapRagCapEndpoints();

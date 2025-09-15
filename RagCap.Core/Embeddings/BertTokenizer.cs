@@ -15,7 +15,7 @@ namespace RagCap.Core.Embeddings
             _vocabulary = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             using (var reader = new StreamReader(vocabPath))
             {
-                string line;
+                string? line;
                 int index = 0;
                 while ((line = reader.ReadLine()) != null)
                 {

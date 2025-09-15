@@ -5,7 +5,7 @@ namespace RagCap.Core.Capsule;
 
 public class ExportRecord
 {
-    public string Format { get; set; }
-    public string FilePath { get; set; }
+    public string Format { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
 }

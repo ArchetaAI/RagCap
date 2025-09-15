@@ -1,4 +1,3 @@
-
 using Microsoft.Data.Sqlite;
 using RagCap.Core.Capsule;
 using System.Threading.Tasks;
@@ -25,15 +24,13 @@ namespace RagCap.Core.Capsule
             _connection = connection;
         }
 
-        
-
         public async Task<long> AddSourceDocumentAsync(SourceDocument document)
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "INSERT INTO sources (path, hash) VALUES ($path, $hash) RETURNING id;";
             cmd.Parameters.AddWithValue("$path", document.Path);
             cmd.Parameters.AddWithValue("$hash", document.Hash);
-            return (long)await cmd.ExecuteScalarAsync();
+            return (long?)await cmd.ExecuteScalarAsync() ?? 0;
         }
 
         public async Task<long> AddChunkAsync(Chunk chunk)
@@ -42,21 +39,23 @@ namespace RagCap.Core.Capsule
             cmd.CommandText = "INSERT INTO chunks (source_id, text) VALUES ($source_id, $text) RETURNING id;";
             cmd.Parameters.AddWithValue("$source_id", chunk.SourceDocumentId);
             cmd.Parameters.AddWithValue("$text", chunk.Content);
-            return (long)await cmd.ExecuteScalarAsync();
+            return (long?)await cmd.ExecuteScalarAsync() ?? 0;
         }
 
         public async Task AddEmbeddingAsync(Embedding embedding)
         {
+#nullable disable
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "INSERT INTO embeddings (chunk_id, vector, dimension) VALUES ($chunk_id, $vector, $dimension);";
 
-            var vectorBytes = new byte[embedding.Vector.Length * 4];
+            var vectorBytes = new byte[embedding.Vector!.Length * 4];
             Buffer.BlockCopy(embedding.Vector, 0, vectorBytes, 0, vectorBytes.Length);
 
             cmd.Parameters.AddWithValue("$chunk_id", embedding.ChunkId);
             cmd.Parameters.AddWithValue("$vector", vectorBytes);
             cmd.Parameters.AddWithValue("$dimension", embedding.Dimension);
             await cmd.ExecuteNonQueryAsync();
+#nullable enable
         }
 
         public async Task SetMetaValueAsync(string key, string value)
@@ -68,12 +67,12 @@ namespace RagCap.Core.Capsule
             await cmd.ExecuteNonQueryAsync();
         }
 
-        public async Task<string> GetMetaValueAsync(string key)
+        public async Task<string?> GetMetaValueAsync(string key)
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = "SELECT value FROM meta WHERE key = $key;";
             cmd.Parameters.AddWithValue("$key", key);
-            return (string)await cmd.ExecuteScalarAsync();
+            return (string?)await cmd.ExecuteScalarAsync();
         }
 
         public async Task<Chunk?> GetChunkAsync(long chunkId)
@@ -110,6 +109,79 @@ namespace RagCap.Core.Capsule
                 };
             }
             return null;
+        }
+
+        public async Task<Embedding?> GetEmbeddingAsync(string chunkId)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT chunk_id, vector, dimension FROM embeddings WHERE chunk_id = $chunk_id;";
+            cmd.Parameters.AddWithValue("$chunk_id", chunkId);
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var value = reader.GetValue(1);
+                if (value is DBNull || value == null) return null;
+                var vectorBytes = (byte[])value;
+                var vector = new float[vectorBytes.Length / 4];
+                Buffer.BlockCopy(vectorBytes, 0, vector, 0, vectorBytes.Length);
+
+                return new Embedding
+                {
+                    ChunkId = reader.GetString(0),
+                    Vector = vector,
+                    Dimension = reader.GetInt32(2)
+                };
+            }
+            return null;
+        }
+
+        public async Task<List<Chunk>> GetAllChunksAsync()
+        {
+            var chunks = new List<Chunk>();
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT id, source_id, text FROM chunks;";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                chunks.Add(new Chunk
+                {
+                    Id = reader.GetInt64(0),
+                    SourceDocumentId = reader.GetInt64(1).ToString(),
+                    Content = reader.GetString(2)
+                });
+            }
+            return chunks;
+        }
+
+        public async Task<List<SourceDocument>> GetAllSourceDocumentsAsync()
+        {
+            var documents = new List<SourceDocument>();
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT id, path, hash FROM sources;";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                documents.Add(new SourceDocument
+                {
+                    Id = reader.GetInt64(0).ToString(),
+                    Path = reader.GetString(1),
+                    Hash = reader.GetString(2)
+                });
+            }
+            return documents;
+        }
+
+        public async Task<Dictionary<string, string>> GetAllMetaAsync()
+        {
+            var meta = new Dictionary<string, string>();
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT key, value FROM meta;";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                meta[reader.GetString(0)] = reader.GetString(1);
+            }
+            return meta;
         }
 
         public void Dispose()

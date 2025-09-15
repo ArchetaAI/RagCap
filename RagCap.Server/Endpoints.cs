@@ -13,6 +13,8 @@ namespace RagCap.Server
     {
         public static void MapRagCapEndpoints(this WebApplication app)
         {
+            app.MapGet("/", () => "RagCap Server is running!");
+
             app.MapGet("/search", async (string query, int? topK, ILogger<Program> logger, CapsuleManager capsule, ISearcher searcher) =>
             {
                 logger.LogInformation("Searching for '{query}' with topK={topK}", query, topK);

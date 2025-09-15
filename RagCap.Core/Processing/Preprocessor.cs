@@ -10,11 +10,19 @@ namespace RagCap.Core.Processing
     {
         private List<string> _codeBlocks = new List<string>();
         private readonly LanguageDetector _languageDetector;
+        private readonly bool _removeBoilerplate;
+        private readonly bool _preserveCode;
+        private readonly bool _flattenTables;
+        private readonly bool _detectLanguage;
 
-        public Preprocessor()
+        public Preprocessor(bool removeBoilerplate = true, bool preserveCode = true, bool flattenTables = true, bool detectLanguage = true)
         {
             _languageDetector = new LanguageDetector();
             _languageDetector.AddAllLanguages();
+            _removeBoilerplate = removeBoilerplate;
+            _preserveCode = preserveCode;
+            _flattenTables = flattenTables;
+            _detectLanguage = detectLanguage;
         }
 
         public string Process(SourceDocument document)
@@ -25,18 +33,31 @@ namespace RagCap.Core.Processing
                 return "";
             }
 
-            DetectLanguage(document, text);
+            if (_detectLanguage)
+            {
+                DetectLanguage(document, text);
+            }
 
-            text = PreserveCodeFences(text, document.DocumentType);
+            if (_preserveCode)
+            {
+                text = PreserveCodeFences(text, document.DocumentType ?? string.Empty);
+            }
 
-            if (document.DocumentType == "html")
+            if (_removeBoilerplate && document.DocumentType == "html")
             {
                 text = RemoveBoilerplate(text);
-                text = FlattenHtmlTables(text);
             }
-            else if (document.DocumentType == "markdown" || document.DocumentType == "md")
+
+            if (_flattenTables)
             {
-                text = FlattenMarkdownTables(text);
+                if (document.DocumentType == "html")
+                {
+                    text = FlattenHtmlTables(text);
+                }
+                else if (document.DocumentType == "markdown" || document.DocumentType == "md")
+                {
+                    text = FlattenMarkdownTables(text);
+                }
             }
 
             // normalize whitespace
@@ -44,7 +65,10 @@ namespace RagCap.Core.Processing
             // normalize line breaks
             text = Regex.Replace(text, @"(\r\n|\r|\n)", "\n");
 
-            text = RestoreCodeFences(text);
+            if (_preserveCode)
+            {
+                text = RestoreCodeFences(text);
+            }
 
             return text;
         }
@@ -152,7 +176,7 @@ namespace RagCap.Core.Processing
             var lines = text.Split('\n');
             var newLines = new List<string>();
             bool inTable = false;
-            List<string> headers = null;
+            List<string>? headers = null;
 
             foreach (var line in lines)
             {

@@ -10,7 +10,7 @@ namespace RagCap.CLI.Commands
         public sealed class Settings : CommandSettings
         {
             [CommandArgument(0, "<file>")]
-            public string File { get; set; }
+            public required string File { get; set; }
         }
 
         public override Task<int> ExecuteAsync(CommandContext context, Settings settings)

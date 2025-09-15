@@ -25,6 +25,10 @@ public class ExportManager
     private async Task UpdateManifestAsync(string capsuleFilePath, string outputFilePath, string format)
     {
         var manifest = await Manifest.ReadAsync(capsuleFilePath);
+        if (manifest == null)
+        {
+            manifest = new Manifest(); // Create a new manifest if ReadAsync returns null
+        }
         manifest.ExportHistory ??= new List<ExportRecord>();
         manifest.ExportHistory.Add(new ExportRecord
         {

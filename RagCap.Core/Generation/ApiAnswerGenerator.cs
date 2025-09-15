@@ -19,8 +19,9 @@ namespace RagCap.Core.Generation
         {
             _httpClient = httpClient;
             _model = model;
+            var effectiveEndpoint = endpoint ?? Environment.GetEnvironmentVariable("RAGCAP_AZURE_ENDPOINT");
 
-            if (string.IsNullOrEmpty(endpoint))
+            if (string.IsNullOrEmpty(effectiveEndpoint) || effectiveEndpoint.Contains("openai.com"))
             {
                 // Standard OpenAI
                 _isAzure = false;
@@ -31,9 +32,9 @@ namespace RagCap.Core.Generation
             {
                 // Azure OpenAI
                 _isAzure = true;
-                _httpClient.BaseAddress = new Uri(endpoint);
+                _httpClient.BaseAddress = new Uri(effectiveEndpoint);
                 _httpClient.DefaultRequestHeaders.Add("api-key", apiKey);
-                _apiVersion = apiVersion ?? "2024-02-15-preview"; // Default Azure API version
+                _apiVersion = apiVersion ?? Environment.GetEnvironmentVariable("RAGCAP_AZURE_API_VERSION") ?? "2024-02-15-preview"; // Default Azure API version
             }
         }
 

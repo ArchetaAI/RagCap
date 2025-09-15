@@ -21,8 +21,8 @@ namespace RagCap.Core.Pipeline
                 var result = new InspectionResult
                 {
                     CapsulePath = _capsulePath,
-                    Provider = await capsuleManager.GetMetaValueAsync("embedding_provider"),
-                    Model = await capsuleManager.GetMetaValueAsync("embedding_model"),
+                    Provider = await capsuleManager.GetMetaValueAsync("embedding_provider") ?? string.Empty,
+                    Model = await capsuleManager.GetMetaValueAsync("embedding_model") ?? string.Empty,
                     Dimension = (int)await GetDimension(capsuleManager),
                     Sources = (int)await CountRows(capsuleManager, "sources"),
                     Chunks = (int)await CountRows(capsuleManager, "chunks"),
@@ -46,7 +46,8 @@ namespace RagCap.Core.Pipeline
         {
             using var cmd = capsuleManager.Connection.CreateCommand();
             cmd.CommandText = $"SELECT COUNT(*) FROM {tableName};";
-            return (long)await cmd.ExecuteScalarAsync();
+            var result = await cmd.ExecuteScalarAsync();
+            return result == null ? 0 : (long)result;
         }
 
         private async Task<double> GetAverageChunkLength(CapsuleManager capsuleManager)
@@ -60,9 +61,9 @@ namespace RagCap.Core.Pipeline
 
     public class InspectionResult
     {
-        public string CapsulePath { get; set; }
-        public string Provider { get; set; }
-        public string Model { get; set; }
+        public string CapsulePath { get; set; } = string.Empty;
+        public string Provider { get; set; } = string.Empty;
+        public string Model { get; set; } = string.Empty;
         public int Dimension { get; set; }
         public int Sources { get; set; }
         public int Chunks { get; set; }

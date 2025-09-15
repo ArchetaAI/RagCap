@@ -3,6 +3,7 @@ using RagCap.Core.Chunking;
 using RagCap.Core.Embeddings;
 using RagCap.Core.Ingestion;
 using RagCap.Core.Processing;
+using RagCap.Core.Recipes;
 using RagCap.Core.Utils;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace RagCap.Core.Pipeline
         private readonly TokenChunker _tokenChunker;
         private readonly Preprocessor _preprocessor;
 
-        public BuildPipeline(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider, Recipe recipe = null)
+        public BuildPipeline(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider, Recipe? recipe = null)
         {
             _capsuleManager = capsuleManager;
             _embeddingProvider = embeddingProvider;
@@ -34,7 +35,7 @@ namespace RagCap.Core.Pipeline
             _preprocessor = new Preprocessor(boilerplate, preserveCode, flattenTables, detectLanguage);
         }
 
-        public async Task RunAsync(string inputPath, List<string> sourcesFromRecipe = null)
+        public async Task RunAsync(string inputPath, List<string>? sourcesFromRecipe = null)
         {
             var files = new List<string>();
             if (sourcesFromRecipe != null && sourcesFromRecipe.Count > 0)
@@ -73,14 +74,17 @@ namespace RagCap.Core.Pipeline
                 {
                     var loader = FileLoaderFactory.GetLoader(file);
                     var content = loader.LoadContent(file);
-                    content = _preprocessor.Process(content);
 
                     var sourceDocument = new SourceDocument
                     {
                         Path = file,
                         Hash = HashUtils.GetSha256Hash(content),
-                        Content = content
+                        Content = content,
+                        DocumentType = Path.GetExtension(file).TrimStart('.').ToLowerInvariant()
                     };
+
+                    sourceDocument.Content = _preprocessor.Process(sourceDocument);
+
                     var sourceDocumentId = await _capsuleManager.AddSourceDocumentAsync(sourceDocument);
                     sourceDocument.Id = sourceDocumentId.ToString();
                     sources++;
@@ -92,7 +96,7 @@ namespace RagCap.Core.Pipeline
                         var chunkId = await _capsuleManager.AddChunkAsync(chunk);
                         chunks++;
 
-                        var embedding = await _embeddingProvider.GenerateEmbeddingAsync(chunk.Content);
+                        var embedding = await _embeddingProvider.GenerateEmbeddingAsync(chunk.Content ?? string.Empty);
                         var embeddingRecord = new Embedding
                         {
                             ChunkId = chunkId.ToString(),

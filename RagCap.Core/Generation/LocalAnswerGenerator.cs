@@ -19,15 +19,17 @@ namespace RagCap.Core.Generation
 
         public async Task<string> GenerateAsync(string query, IEnumerable<string> context)
         {
+#nullable disable
             var prompt = BuildPrompt(query, context);
 
             var responseBuilder = new StringBuilder();
-            await foreach (var stream in _ollama.GenerateAsync(prompt))
+            await foreach (var stream in _ollama!.GenerateAsync(prompt))
             {
                 responseBuilder.Append(stream.Response);
             }
 
             return responseBuilder.ToString();
+#nullable enable
         }
 
         private string BuildPrompt(string query, IEnumerable<string> context)

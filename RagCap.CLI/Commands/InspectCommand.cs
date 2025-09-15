@@ -12,7 +12,7 @@ namespace RagCap.CLI.Commands
         public sealed class Settings : CommandSettings
         {
             [CommandArgument(0, "<input>")]
-            public string Input { get; set; }
+            public required string Input { get; set; }
 
             [CommandOption("--json")]
             [DefaultValue(false)]

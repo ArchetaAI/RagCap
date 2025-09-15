@@ -5,6 +5,6 @@ namespace RagCap.Core.Pipeline
 {
     public interface IBuildPipeline
     {
-        Task RunAsync(string inputPath, List<string> sourcesFromRecipe = null);
+        Task RunAsync(string inputPath, List<string>? sourcesFromRecipe = null);
     }
 }

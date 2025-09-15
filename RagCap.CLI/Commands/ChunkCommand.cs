@@ -12,7 +12,7 @@ namespace RagCap.CLI.Commands
         public sealed class Settings : CommandSettings
         {
             [CommandArgument(0, "<file>")]
-            public string File { get; set; }
+            public required string File { get; set; }
 
             [CommandOption("--tokens")]
             [DefaultValue(512)]
@@ -31,13 +31,13 @@ namespace RagCap.CLI.Commands
         {
             var chunker = new TokenChunker(settings.MaxTokens, settings.OverlapTokens, settings.PreserveParagraphs);
             var content = await System.IO.File.ReadAllTextAsync(settings.File);
-            var document = new SourceDocument { Id = settings.File, Content = content };
+            var document = new SourceDocument { Id = settings.File, Path = settings.File, Hash = RagCap.Core.Utils.HashUtils.GetSha256Hash(content), Content = content };
             var chunks = chunker.Chunk(document);
 
             foreach (var chunk in chunks)
             {
                 AnsiConsole.WriteLine("--- Chunk ---");
-                AnsiConsole.WriteLine(chunk.Content);
+                AnsiConsole.WriteLine(chunk.Content ?? string.Empty);
                 AnsiConsole.WriteLine($"Token Count: {chunk.TokenCount}");
                 AnsiConsole.WriteLine();
             }

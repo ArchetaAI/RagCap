@@ -11,6 +11,16 @@
       "Format": "faiss",
       "FilePath": "output.faiss",
       "Timestamp": "2025-09-12T11:13:32.8699316Z"
+    },
+    {
+      "Format": "parquet",
+      "FilePath": "C:\\Users\\Caleb\\Desktop\\RagCap\\my_test.parquet",
+      "Timestamp": "2025-09-14T12:30:14.6428787Z"
+    },
+    {
+      "Format": "parquet",
+      "FilePath": "C:\\Users\\Caleb\\Desktop\\RagCap\\my_test.parquet",
+      "Timestamp": "2025-09-14T15:16:26.7226504Z"
     }
   ]
 }

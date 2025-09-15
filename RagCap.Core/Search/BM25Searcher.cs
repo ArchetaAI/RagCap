@@ -1,4 +1,3 @@
-
 using RagCap.Core.Capsule;
 using RagCap.Core.Pipeline;
 using System.Collections.Generic;
@@ -31,7 +30,7 @@ namespace RagCap.Core.Search
                 WHERE chunks_fts MATCH $query 
                 ORDER BY score 
                 LIMIT $limit";
-            command.Parameters.AddWithValue("$query", query);
+            command.Parameters.AddWithValue("$query", EscapeFtsQuery(query));
             command.Parameters.AddWithValue("$limit", topK);
 
             using var reader = await command.ExecuteReaderAsync();
@@ -47,6 +46,23 @@ namespace RagCap.Core.Search
             }
 
             return results;
+        }
+
+        private string EscapeFtsQuery(string query)
+        {
+            // Escape double quotes by doubling them.
+            string escapedQuery = query.Replace("\"", "\"\"");
+
+            // Escape other special FTS5 characters.
+            escapedQuery = escapedQuery.Replace("-", "\"-\"");
+            escapedQuery = escapedQuery.Replace("*", "\"*\"");
+            escapedQuery = escapedQuery.Replace("^", "\"^\"");
+            escapedQuery = escapedQuery.Replace("$", "\"$\"");
+            escapedQuery = escapedQuery.Replace("(", "\"(\"");
+            escapedQuery = escapedQuery.Replace(")", "\")\")");
+
+            // Enclose the entire query in double quotes.
+            return "\"" + escapedQuery + "\"";
         }
     }
 }

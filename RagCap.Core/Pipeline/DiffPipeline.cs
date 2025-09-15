@@ -73,9 +73,9 @@ namespace RagCap.Core.Pipeline
             result.ChunkCount = (chunks1.Count(), chunks2.Count());
 
             if (chunks1.Any())
-                result.AverageChunkSize = (chunks1.Average(c => c.Content.Length), result.AverageChunkSize.Item2);
+                result.AverageChunkSize = (chunks1.Average(c => c.Content?.Length ?? 0), result.AverageChunkSize.Item2);
             if (chunks2.Any())
-                result.AverageChunkSize = (result.AverageChunkSize.Item1, chunks2.Average(c => c.Content.Length));
+                result.AverageChunkSize = (result.AverageChunkSize.Item1, chunks2.Average(c => c.Content?.Length ?? 0));
         }
 
         private async Task CompareEmbeddings(DiffResult result)

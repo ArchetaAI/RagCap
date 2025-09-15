@@ -21,7 +21,7 @@ public abstract class ExporterBase : IExporter
             await connection.OpenAsync();
 
             var chunkCommand = connection.CreateCommand();
-            chunkCommand.CommandText = "SELECT Id, SourceDocumentId, Content, TokenCount FROM chunks";
+            chunkCommand.CommandText = "SELECT Id, source_id, text FROM chunks";
             using (var reader = await chunkCommand.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
@@ -30,14 +30,13 @@ public abstract class ExporterBase : IExporter
                     {
                         Id = reader.GetInt64(0),
                         SourceDocumentId = reader.GetString(1),
-                        Content = reader.GetString(2),
-                        TokenCount = reader.GetInt32(3)
+                        Content = reader.GetString(2)
                     });
                 }
             }
 
             var embeddingCommand = connection.CreateCommand();
-            embeddingCommand.CommandText = "SELECT ChunkId, Vector, Dimension FROM embeddings";
+            embeddingCommand.CommandText = "SELECT chunk_id, Vector, Dimension FROM embeddings";
             using (var reader = await embeddingCommand.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())

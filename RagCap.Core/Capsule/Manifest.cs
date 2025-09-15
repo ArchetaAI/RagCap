@@ -11,11 +11,12 @@ public class Manifest
 {
     public int Version { get; set; }
     public DateTime CreatedAt { get; set; }
-    public List<ExportRecord> ExportHistory { get; set; }
+    public List<ExportRecord> ExportHistory { get; set; } = new List<ExportRecord>();
 
-    public static async Task<Manifest> ReadAsync(string capsuleFilePath)
+    public static async Task<Manifest?> ReadAsync(string capsuleFilePath)
     {
-        var manifestPath = Path.Combine(Path.GetDirectoryName(capsuleFilePath), "manifest.json");
+        var directoryName = Path.GetDirectoryName(capsuleFilePath) ?? string.Empty;
+        var manifestPath = Path.Combine(directoryName, "manifest.json");
         if (!File.Exists(manifestPath))
         {
             // This is a fallback for older capsules that don't have a manifest file.
@@ -34,7 +35,8 @@ public class Manifest
 
     public async Task WriteAsync(string capsuleFilePath)
     {
-        var manifestPath = Path.Combine(Path.GetDirectoryName(capsuleFilePath), "manifest.json");
+        var directoryName = Path.GetDirectoryName(capsuleFilePath) ?? string.Empty;
+        var manifestPath = Path.Combine(directoryName, "manifest.json");
         var options = new JsonSerializerOptions { WriteIndented = true };
         var json = JsonSerializer.Serialize(this, options);
         await File.WriteAllTextAsync(manifestPath, json);

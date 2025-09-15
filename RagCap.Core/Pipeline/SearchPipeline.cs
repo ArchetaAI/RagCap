@@ -30,7 +30,7 @@ namespace RagCap.Core.Pipeline
 
             using (var capsuleManager = new CapsuleManager(capsulePath))
             {
-                var provider = await capsuleManager.GetMetaValueAsync("embedding_provider");
+                var provider = await capsuleManager.GetMetaValueAsync("embedding_provider") ?? "local";
                 var model = await capsuleManager.GetMetaValueAsync("embedding_model");
 
                 IEmbeddingProvider embeddingProvider;
@@ -40,6 +40,10 @@ namespace RagCap.Core.Pipeline
                     if (string.IsNullOrEmpty(apiKey))
                     {
                         throw new Exception("RAGCAP_API_KEY environment variable must be set when using the API provider.");
+                    }
+                    if (string.IsNullOrEmpty(model))
+                    {
+                        throw new Exception("Embedding model must be specified for API provider.");
                     }
                     embeddingProvider = new ApiEmbeddingProvider(model, apiKey);
                 }
