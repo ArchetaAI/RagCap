@@ -58,9 +58,9 @@ embeddings:
   dimension: 384
 preprocess:
   boilerplate: true
-  preserve_code: true
-  flatten_tables: true
-  detect_language: true
+  preserveCode: true
+  flattenTables: true
+  detectLanguage: true
 output:
   path: mycapsule.ragcap
 ```

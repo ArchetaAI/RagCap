@@ -35,9 +35,9 @@ namespace RagCap.Core.Recipes
     public class Preprocess
     {
         public bool Boilerplate { get; set; }
-        public bool Preserve_code { get; set; }
-        public bool Flatten_tables { get; set; }
-        public bool Detect_language { get; set; }
+        public bool PreserveCode { get; set; }
+        public bool FlattenTables { get; set; }
+        public bool DetectLanguage { get; set; }
     }
 
     public class Output

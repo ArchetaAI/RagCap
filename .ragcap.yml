@@ -1,0 +1,36 @@
+# RagCap build recipe
+# Adjust values and run:  ragcap build --recipe .ragcap.yml
+
+sources:
+  # Ingest all files under this folder (recurses)
+  - path: ./test_data
+    # Optional hint (txt|md|pdf|html); autodetects by extension
+    # type: pdf
+
+chunking:
+  # Max tokens per chunk (smaller -> more chunks)
+  size: 200
+  # Overlap between adjacent chunks in tokens
+  overlap: 40
+
+preprocess:
+  # Strip boilerplate (headers/footers/nav) from HTML
+  boilerplate: true
+  # Preserve code fences/blocks during preprocessing
+  preserveCode: true
+  # Flatten HTML/Markdown tables into linear text
+  flattenTables: true
+  # Add detected language to source metadata
+  detectLanguage: true
+
+embeddings:
+  # "local" (default) or "api"
+  provider: local
+  # If provider=api, optionally set these:
+  # model: text-embedding-3-small
+  # apiVersion: "2024-xx-xx"
+  # endpoint: https://api.example.com
+  # dimension: 384  # optional; informative only for local provider
+
+output:
+  path: local_capsule.ragcap

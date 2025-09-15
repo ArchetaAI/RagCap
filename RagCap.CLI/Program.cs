@@ -12,6 +12,7 @@ app.Configure(config =>
     config.AddCommand<EmbedCommand>("embed");
     config.AddCommand<ExportCommand>("export");
     config.AddCommand<InspectCommand>("inspect");
+    config.AddCommand<DebugChunkCommand>("debug-chunk");
     config.AddCommand<SearchCommand>("search");
     config.AddCommand<ServeCommand>("serve");
     config.AddCommand<VerifyCommand>("verify");

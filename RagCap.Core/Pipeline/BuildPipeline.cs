@@ -29,9 +29,9 @@ namespace RagCap.Core.Pipeline
             _tokenChunker = new TokenChunker(chunkSize, overlap);
 
             var boilerplate = recipe?.Preprocess?.Boilerplate ?? true;
-            var preserveCode = recipe?.Preprocess?.Preserve_code ?? true;
-            var flattenTables = recipe?.Preprocess?.Flatten_tables ?? true;
-            var detectLanguage = recipe?.Preprocess?.Detect_language ?? true;
+            var preserveCode = recipe?.Preprocess?.PreserveCode ?? true;
+            var flattenTables = recipe?.Preprocess?.FlattenTables ?? true;
+            var detectLanguage = recipe?.Preprocess?.DetectLanguage ?? true;
             _preprocessor = new Preprocessor(boilerplate, preserveCode, flattenTables, detectLanguage);
         }
 

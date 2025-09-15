@@ -2,6 +2,7 @@
 using RagCap.Core.Capsule;
 using Microsoft.Data.Sqlite;
 using System.Threading.Tasks;
+using RagCap.Core.Utils;
 
 namespace RagCap.Core.Pipeline
 {
@@ -52,10 +53,23 @@ namespace RagCap.Core.Pipeline
 
         private async Task<double> GetAverageChunkLength(CapsuleManager capsuleManager)
         {
+            // Compute true token average using the same tokenizer as the chunker
+            var tokenizer = new Tokenizer();
+            double totalTokens = 0;
+            long count = 0;
+
             using var cmd = capsuleManager.Connection.CreateCommand();
-            cmd.CommandText = "SELECT AVG(LENGTH(text)) FROM chunks;";
-            var result = await cmd.ExecuteScalarAsync();
-            return result == null ? 0 : (double)result;
+            cmd.CommandText = "SELECT text FROM chunks;";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var text = reader.IsDBNull(0) ? string.Empty : reader.GetString(0);
+                totalTokens += tokenizer.CountTokens(text);
+                count++;
+            }
+
+            if (count == 0) return 0;
+            return totalTokens / count;
         }
     }
 

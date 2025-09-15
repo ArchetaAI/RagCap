@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Spectre.Console;
+using System.Globalization;
 
 namespace RagCap.CLI.Commands
 {
@@ -48,7 +49,8 @@ namespace RagCap.CLI.Commands
                 AnsiConsole.WriteLine($"Model: {result.Model}");
                 AnsiConsole.WriteLine($"Dimension: {result.Dimension}");
                 AnsiConsole.WriteLine($"Sources: {result.Sources}");
-                AnsiConsole.WriteLine($"Chunks: {result.Chunks} (avg length {result.AvgChunkLength:F2} tokens)");
+                var avgTokens = result.AvgChunkLength.ToString("F2", CultureInfo.InvariantCulture);
+                AnsiConsole.WriteLine($"Chunks: {result.Chunks} (avg length {avgTokens} tokens)");
                 AnsiConsole.WriteLine($"Embeddings: {result.Embeddings}");
             }
         }

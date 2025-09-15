@@ -60,10 +60,16 @@ namespace RagCap.Core.Processing
                 }
             }
 
-            // normalize whitespace
-            text = Regex.Replace(text, @"\s+", " ").Trim();
-            // normalize line breaks
-            text = Regex.Replace(text, @"(\r\n|\r|\n)", "\n");
+            // normalize whitespace while preserving paragraph boundaries
+            // 1) normalize line endings to \n
+            text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+            // 2) collapse spaces/tabs/formfeeds/vertical tabs but keep newlines
+            text = Regex.Replace(text, "[ \t\f\v]+", " ");
+            // 3) trim trailing spaces at end of lines
+            text = Regex.Replace(text, "[ \t]+\n", "\n");
+            // 4) collapse 3+ newlines to exactly 2 so paragraph detection remains effective
+            text = Regex.Replace(text, "\n{3,}", "\n\n");
+            text = text.Trim();
 
             if (_preserveCode)
             {
