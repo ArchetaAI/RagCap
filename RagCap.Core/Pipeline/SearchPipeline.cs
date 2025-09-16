@@ -47,7 +47,9 @@ namespace RagCap.Core.Pipeline
                     {
                         throw new Exception("Embedding model must be specified for API provider.");
                     }
-                    embeddingProvider = new ApiEmbeddingProvider(model, apiKey);
+                    var endpoint = await capsuleManager.GetMetaValueAsync("embedding_endpoint");
+                    var apiVersion = await capsuleManager.GetMetaValueAsync("embedding_api_version");
+                    embeddingProvider = new ApiEmbeddingProvider(apiKey, model, endpoint, apiVersion);
                 }
                 else
                 {

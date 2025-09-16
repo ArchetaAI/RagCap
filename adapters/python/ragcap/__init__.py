@@ -26,12 +26,12 @@ class Capsule:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Error executing RagCap command: {e.stderr}") from e
 
-    def search(self, query, top_k=5):
-        output = self._run_command('search', '-q', query, '--top', str(top_k), '--format', 'json')
+    def search(self, query, top_k=5, mode='hybrid'):
+        output = self._run_command('search', query, '--top-k', str(top_k), '--mode', mode, '--json')
         return json.loads(output)
 
-    def ask(self, query):
-        output = self._run_command('ask', '-q', query, '--format', 'json')
+    def ask(self, query, top_k=5, provider='local'):
+        output = self._run_command('ask', query, '--top-k', str(top_k), '--provider', provider, '--json')
         return json.loads(output)
 
     def export(self, export_path, format='parquet'):

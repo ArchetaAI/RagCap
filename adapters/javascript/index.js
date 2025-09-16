@@ -57,13 +57,13 @@ class Capsule {
         });
     }
 
-    async search(query, topK = 5) {
-        const output = await this._runCommand('search', ['-q', query, '--top', topK.toString(), '--format', 'json']);
+    async search(query, topK = 5, mode = 'hybrid') {
+        const output = await this._runCommand('search', [query, '--top-k', topK.toString(), '--mode', mode, '--json']);
         return JSON.parse(output);
     }
 
-    async ask(query) {
-        const output = await this._runCommand('ask', ['-q', query, '--format', 'json']);
+    async ask(query, topK = 5, provider = 'local') {
+        const output = await this._runCommand('ask', [query, '--top-k', topK.toString(), '--provider', provider, '--json']);
         return JSON.parse(output);
     }
 

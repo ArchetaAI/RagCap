@@ -1,4 +1,3 @@
-
 # Visual Studio
 .vs/
 
@@ -35,3 +34,8 @@ packages/
 
 # Other
 *.DS_Store
+local_capsule.ragcap
+sqlite-vec.dll
+sqlite-vec.so
+
+/publish/

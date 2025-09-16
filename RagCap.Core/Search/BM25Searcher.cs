@@ -41,7 +41,8 @@ namespace RagCap.Core.Search
                     ChunkId = reader.GetInt32(0),
                     Source = reader.GetString(1),
                     Text = reader.GetString(2),
-                    Score = reader.GetFloat(3)
+                    // bm25() returns lower-is-better; present higher-is-better
+                    Score = (float)(1.0 / (1e-9 + reader.GetDouble(3)))
                 });
             }
 

@@ -38,41 +38,55 @@ namespace RagCap.Core.Search
 
             var bm25Results = await bm25Searcher.SearchAsync(query, topK);
 
+            // Materialize lists to avoid repeated enumeration and index lookups
+            var bm25List = bm25Results.ToList();
+            var vectorList = vectorResults.ToList();
+
+            // Precompute ranks for RRF
+            var bm25Rank = new Dictionary<int, int>(bm25List.Count);
+            for (int i = 0; i < bm25List.Count; i++) bm25Rank[bm25List[i].ChunkId] = i;
+            var vecRank = new Dictionary<int, int>(vectorList.Count);
+            for (int i = 0; i < vectorList.Count; i++) vecRank[vectorList[i].ChunkId] = i;
+
             var combinedResults = new Dictionary<int, SearchResult>();
 
-            // Normalize and combine BM25 scores
-            var bm25Lookup = bm25Results.ToDictionary(r => r.ChunkId);
-            foreach (var result in bm25Results)
+            // Combine BM25 with RRF (k=60)
+            const float k = 60f;
+            foreach (var r in bm25List)
             {
-                combinedResults[result.ChunkId] = new SearchResult
+                var score = 1.0f / (k + bm25Rank[r.ChunkId] + 1);
+                combinedResults[r.ChunkId] = new SearchResult
                 {
-                    ChunkId = result.ChunkId,
-                    Source = result.Source,
-                    Text = result.Text,
-                    Score = 1.0f / (60 + bm25Results.ToList().IndexOf(result) + 1) // Reciprocal Rank Fusion
+                    ChunkId = r.ChunkId,
+                    Source = r.Source,
+                    Text = r.Text,
+                    Score = score
                 };
             }
 
-            // Normalize and combine vector scores
-            foreach (var result in vectorResults)
+            // Merge vector results
+            foreach (var r in vectorList)
             {
-                if (combinedResults.TryGetValue(result.ChunkId, out var existingResult))
+                var score = 1.0f / (k + vecRank[r.ChunkId] + 1);
+                if (combinedResults.TryGetValue(r.ChunkId, out var existing))
                 {
-                    existingResult.Score += 1.0f / (60 + vectorResults.ToList().IndexOf(result) + 1); // Reciprocal Rank Fusion
+                    existing.Score += score;
                 }
                 else
                 {
-                    combinedResults[result.ChunkId] = new SearchResult
+                    combinedResults[r.ChunkId] = new SearchResult
                     {
-                        ChunkId = result.ChunkId,
-                        Source = result.Source,
-                        Text = result.Text,
-                        Score = 1.0f / (60 + vectorResults.ToList().IndexOf(result) + 1) // Reciprocal Rank Fusion
+                        ChunkId = r.ChunkId,
+                        Source = r.Source,
+                        Text = r.Text,
+                        Score = score
                     };
                 }
             }
 
-            return combinedResults.Values.OrderByDescending(r => r.Score).Take(topK);
+            return combinedResults.Values
+                .OrderByDescending(r => r.Score)
+                .Take(topK);
         }
     }
 }

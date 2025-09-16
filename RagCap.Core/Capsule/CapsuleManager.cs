@@ -7,7 +7,7 @@ namespace RagCap.Core.Capsule
     public class CapsuleManager : System.IDisposable
     {
         private readonly SqliteConnection _connection;
-        public SqliteConnection Connection => _connection;
+        public SqliteConnection Connection => new SqliteConnection(_connection.ConnectionString);
 
         public CapsuleManager(string capsulePath) : this(new SqliteConnection($"Data Source={capsulePath}"))
         {

@@ -44,7 +44,7 @@ namespace RagCap.Core.Ingestion
             }
 
             // Track current heading path (H1 > H2 > H3)
-            var headingLevels = new string[6];
+            var headingLevels = new string?[6];
 
             // Helper to get visible text for a node, including image alt text
             string GetInlineText(HtmlNode node)

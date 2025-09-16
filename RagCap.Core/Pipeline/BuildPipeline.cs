@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Spectre.Console;
 
 namespace RagCap.Core.Pipeline
 {
@@ -113,56 +114,78 @@ namespace RagCap.Core.Pipeline
 
             RagCap.Core.Utils.Logging.Debug($"Discovered {filtered.Count} files after filtering");
 
-            foreach (var file in filtered)
-            {
-                try
+            await AnsiConsole.Progress()
+                .Columns(new ProgressColumn[]
                 {
-                    var loader = FileLoaderFactory.GetLoader(file);
-                    var content = loader.LoadContent(file);
-
-                    var sourceDocument = new SourceDocument
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new RemainingTimeColumn(),
+                    new SpinnerColumn(),
+                })
+                .StartAsync(async ctx =>
+                {
+                    var task = ctx.AddTask("[green]Building capsule...[/]", new ProgressTaskSettings
                     {
-                        Path = file,
-                        Hash = HashUtils.GetSha256Hash(content),
-                        Content = content,
-                        DocumentType = Path.GetExtension(file).TrimStart('.').ToLowerInvariant()
-                    };
+                        MaxValue = filtered.Count
+                    });
 
-                    sourceDocument.Content = _preprocessor.Process(sourceDocument);
-
-                    var sourceDocumentId = await _capsuleManager.AddSourceDocumentAsync(sourceDocument);
-                    sourceDocument.Id = sourceDocumentId.ToString();
-                    sources++;
-
-                    var chunkContent = (_chunker is RagCap.Core.Chunking.BertTokenChunker b)
-                        ? b.Chunk(sourceDocument)
-                        : ((TokenChunker)_chunker).Chunk(sourceDocument);
-
-                    foreach (var chunk in chunkContent)
+                    foreach (var file in filtered)
                     {
-                        var chunkId = await _capsuleManager.AddChunkAsync(chunk);
-                        chunks++;
-
-                        var embedding = await _embeddingProvider.GenerateEmbeddingAsync(chunk.Content ?? string.Empty);
-                        var embeddingRecord = new Embedding
+                        task.Description = $"[green]Processing:[/] {Path.GetFileName(file)}";
+                        try
                         {
-                            ChunkId = chunkId.ToString(),
-                            Vector = embedding,
-                            Dimension = embedding.Length
-                        };
-                        await _capsuleManager.AddEmbeddingAsync(embeddingRecord);
-                        embeddings++;
+                            var loader = FileLoaderFactory.GetLoader(file);
+                            var content = loader.LoadContent(file);
+
+                            var sourceDocument = new SourceDocument
+                            {
+                                Path = file,
+                                Hash = HashUtils.GetSha256Hash(content),
+                                Content = content,
+                                DocumentType = Path.GetExtension(file).TrimStart('.').ToLowerInvariant()
+                            };
+
+                            sourceDocument.Content = _preprocessor.Process(sourceDocument);
+
+                            var sourceDocumentId = await _capsuleManager.AddSourceDocumentAsync(sourceDocument);
+                            sourceDocument.Id = sourceDocumentId.ToString();
+                            sources++;
+
+                            var chunkContent = (_chunker is RagCap.Core.Chunking.BertTokenChunker b)
+                                ? b.Chunk(sourceDocument)
+                                : ((TokenChunker)_chunker).Chunk(sourceDocument);
+
+                            foreach (var chunk in chunkContent)
+                            {
+                                var chunkId = await _capsuleManager.AddChunkAsync(chunk);
+                                chunks++;
+
+                                var embedding = await _embeddingProvider.GenerateEmbeddingAsync(chunk.Content ?? string.Empty);
+                                var embeddingRecord = new Embedding
+                                {
+                                    ChunkId = chunkId.ToString(),
+                                    Vector = embedding,
+                                    Dimension = embedding.Length
+                                };
+                                await _capsuleManager.AddEmbeddingAsync(embeddingRecord);
+                                embeddings++;
+                            }
+                        }
+                        catch (NotSupportedException ex)
+                        {
+                            RagCap.Core.Utils.Logging.Debug($"Skipping unsupported file type: {file}. {ex.Message}");
+                        }
+                        catch (Exception ex)
+                        {
+                            RagCap.Core.Utils.Logging.Error($"Error processing file {file}: {ex.Message}");
+                        }
+                        finally
+                        {
+                            task.Increment(1);
+                        }
                     }
-                }
-                catch (NotSupportedException ex)
-                {
-                    RagCap.Core.Utils.Logging.Debug($"Skipping unsupported file type: {file}. {ex.Message}");
-                }
-                catch (Exception ex)
-                {
-                    RagCap.Core.Utils.Logging.Error($"Error processing file {file}: {ex.Message}");
-                }
-            }
+                });
 
             Console.WriteLine("\nBuild summary:");
             Console.WriteLine($"  Sources: {sources}");

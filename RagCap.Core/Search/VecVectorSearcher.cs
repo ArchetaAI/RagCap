@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using RagCap.Core.Pipeline;
 
 namespace RagCap.Core.Search
 {
@@ -72,10 +74,67 @@ namespace RagCap.Core.Search
             var path = options.Path;
             if (string.IsNullOrWhiteSpace(path))
             {
-                throw new NotSupportedException("RAGCAP_SQLITE_VEC_PATH not set; provide full path to sqlite-vec DLL/SO.");
+                // Fallback to environment
+                var env = VecOptions.FromEnvironment();
+                path = env.Path;
             }
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                // Try simple auto-discovery in common locations
+                var baseDir = AppContext.BaseDirectory;
+                var cwd = Environment.CurrentDirectory;
+                var candidates = new List<string>();
+
+                foreach (var name in PossibleLibraryNames())
+                {
+                    candidates.Add(Path.Combine(baseDir, name));
+                    candidates.Add(Path.Combine(cwd, name));
+                    candidates.Add(Path.Combine(baseDir, "native", RuntimeIdFolder(), name));
+                    candidates.Add(Path.Combine(cwd, "native", RuntimeIdFolder(), name));
+                }
+
+                path = candidates.FirstOrDefault(File.Exists) ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new NotSupportedException("sqlite-vec path not found. Set --vec-path or RAGCAP_SQLITE_VEC_PATH to the sqlite-vec library.");
+            }
+
             conn.EnableExtensions(true);
             conn.LoadExtension(path);
+        }
+
+        private static IEnumerable<string> PossibleLibraryNames()
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                yield return "sqlite-vec.dll";
+                yield return "vec0.dll";
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                yield return "sqlite-vec.dylib";
+                yield return "vec0.dylib";
+            }
+            else // Linux and others
+            {
+                yield return "sqlite-vec.so";
+                yield return "vec0.so";
+            }
+        }
+
+        private static string RuntimeIdFolder()
+        {
+            if (OperatingSystem.IsWindows()) return Environment.Is64BitProcess ? "win-x64" : "win-x86";
+            if (OperatingSystem.IsMacOS()) return Environment.Is64BitProcess ? "osx-arm64" : "osx-x64"; // heuristic
+            if (OperatingSystem.IsLinux())
+            {
+                // Distinguish arch only; libc (glibc/musl) cannot be reliably detected here
+                return RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "linux-arm64" : "linux-x64";
+            }
+            return "unknown";
         }
 
         private async Task<int> GetEmbeddingDimension(SqliteConnection conn)
