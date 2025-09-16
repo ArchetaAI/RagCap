@@ -69,9 +69,26 @@ namespace RagCap.CLI.Commands
             }
 
             // Configure chunker and preprocessor like BuildPipeline
-            var chunkSize = recipe?.Chunking?.Size ?? 500;
+            var chunkSize = recipe?.Chunking?.Size ?? 200;
             var overlap = recipe?.Chunking?.Overlap ?? 50;
-            var tokenChunker = new TokenChunker(chunkSize, overlap);
+            var bertAware = recipe?.Chunking?.BertAware ?? true;
+            object chunker;
+            if (bertAware)
+            {
+                try
+                {
+                    chunker = new RagCap.Core.Chunking.BertTokenChunker(chunkSize, overlap);
+                }
+                catch
+                {
+                    AnsiConsole.MarkupLine("[yellow]Warning: BERT vocab not found; falling back to simple tokenizer.[/]");
+                    chunker = new TokenChunker(chunkSize, overlap);
+                }
+            }
+            else
+            {
+                chunker = new TokenChunker(chunkSize, overlap);
+            }
 
             var boilerplate = recipe?.Preprocess?.Boilerplate ?? true;
             var preserveCode = recipe?.Preprocess?.PreserveCode ?? true;
@@ -119,7 +136,9 @@ namespace RagCap.CLI.Commands
                     var processed = preprocessor.Process(sourceDoc);
                     sourceDoc.Content = processed;
 
-                    var chunks = tokenChunker.Chunk(sourceDoc);
+                    var chunks = (chunker is RagCap.Core.Chunking.BertTokenChunker b)
+                        ? b.Chunk(sourceDoc)
+                        : ((TokenChunker)chunker).Chunk(sourceDoc);
                     sources++;
                     totalChunks += chunks.Count;
 

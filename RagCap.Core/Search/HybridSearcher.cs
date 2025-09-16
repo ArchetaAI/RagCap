@@ -11,16 +11,31 @@ namespace RagCap.Core.Search
     {
         private readonly VectorSearcher vectorSearcher;
         private readonly BM25Searcher bm25Searcher;
+        private readonly int candidateLimit;
 
-        public HybridSearcher(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider)
+        public HybridSearcher(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider, int candidateLimit = 500)
         {
             this.vectorSearcher = new VectorSearcher(capsuleManager, embeddingProvider);
             this.bm25Searcher = new BM25Searcher(capsuleManager);
+            this.candidateLimit = candidateLimit;
         }
 
         public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
         {
-            var vectorResults = await vectorSearcher.SearchAsync(query, topK);
+            // Use BM25 to select a candidate set and vector to re-rank for scalability
+            var candidateIds = await bm25Searcher.SearchChunkIdsAsync(query, candidateLimit);
+
+            IEnumerable<SearchResult> vectorResults;
+            if (candidateIds.Count > 0)
+            {
+                vectorResults = await vectorSearcher.SearchAsyncCandidates(query, topK, candidateIds);
+            }
+            else
+            {
+                // Fallback: no BM25 hits, scan full vector space
+                vectorResults = await vectorSearcher.SearchAsync(query, topK);
+            }
+
             var bm25Results = await bm25Searcher.SearchAsync(query, topK);
 
             var combinedResults = new Dictionary<int, SearchResult>();

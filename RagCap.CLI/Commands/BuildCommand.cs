@@ -39,6 +39,10 @@ namespace RagCap.CLI.Commands
 
             [CommandOption("--endpoint")]
             public string? Endpoint { get; set; }
+
+            [CommandOption("--verbose")]
+            [DefaultValue(false)]
+            public bool Verbose { get; set; }
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
@@ -87,12 +91,13 @@ namespace RagCap.CLI.Commands
                 return 1;
             }
 
-            await HandleBuild(outputPath, inputPath, provider, model, apiVersion, endpoint, recipe, settings.RecipePath);
+            await HandleBuild(outputPath, inputPath, provider, model, apiVersion, endpoint, recipe, settings.RecipePath, settings.Verbose);
             return 0;
         }
 
-        private async Task HandleBuild(string capsulePath, string sourcePath, string provider, string? model, string? apiVersion, string? endpoint, Recipe? recipe, string? recipePath)
+        private async Task HandleBuild(string capsulePath, string sourcePath, string provider, string? model, string? apiVersion, string? endpoint, Recipe? recipe, string? recipePath, bool verbose)
         {
+            RagCap.Core.Utils.Logging.Verbose = verbose;
             using (var capsuleManager = new CapsuleManager(capsulePath))
             {
                 IEmbeddingProvider embeddingProvider;

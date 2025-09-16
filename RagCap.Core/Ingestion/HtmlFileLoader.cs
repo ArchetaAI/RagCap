@@ -5,6 +5,15 @@ namespace RagCap.Core.Ingestion
 {
     public class HtmlFileLoader : IFileLoader
     {
+        public class HtmlExtractionOptions
+        {
+            public bool IncludeHeadingContext { get; set; } = true;
+            public bool IncludeTitle { get; set; } = true;
+        }
+
+        // Global options can be configured by the pipeline before ingestion
+        public static HtmlExtractionOptions Options { get; set; } = new HtmlExtractionOptions();
+
         public string LoadContent(string filePath)
         {
             var html = System.IO.File.ReadAllText(filePath);
@@ -29,7 +38,7 @@ namespace RagCap.Core.Ingestion
 
             var blocks = new List<string>();
             var title = HtmlEntity.DeEntitize((doc.DocumentNode.SelectSingleNode("//title")?.InnerText ?? string.Empty).Trim());
-            if (!string.IsNullOrWhiteSpace(title))
+            if (Options.IncludeTitle && !string.IsNullOrWhiteSpace(title))
             {
                 blocks.Add(title);
             }
@@ -81,10 +90,13 @@ namespace RagCap.Core.Ingestion
             void AddBlock(string content)
             {
                 if (string.IsNullOrWhiteSpace(content)) return;
-                var context = string.Join(" > ", headingLevels.Where(s => !string.IsNullOrWhiteSpace(s)));
-                if (!string.IsNullOrWhiteSpace(context))
+                if (Options.IncludeHeadingContext)
                 {
-                    blocks.Add(context);
+                    var context = string.Join(" > ", headingLevels.Where(s => !string.IsNullOrWhiteSpace(s)));
+                    if (!string.IsNullOrWhiteSpace(context))
+                    {
+                        blocks.Add(context);
+                    }
                 }
                 blocks.Add(content.Trim());
             }

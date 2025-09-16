@@ -21,6 +21,7 @@ namespace RagCap.Core.Recipes
     {
         public int Size { get; set; }
         public int Overlap { get; set; }
+        public bool BertAware { get; set; } = true;
     }
 
     public class Embeddings
@@ -38,6 +39,7 @@ namespace RagCap.Core.Recipes
         public bool PreserveCode { get; set; }
         public bool FlattenTables { get; set; }
         public bool DetectLanguage { get; set; }
+        public bool IncludeHeadingContext { get; set; } = true;
     }
 
     public class Output

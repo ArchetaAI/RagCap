@@ -16,6 +16,12 @@ namespace RagCap.Core.Embeddings
             var assemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? string.Empty;
             var modelPath = Path.Combine(assemblyLocation, "models", "all-MiniLM-L6-v2", "model.onnx");
             var vocabPath = Path.Combine(assemblyLocation, "models", "all-MiniLM-L6-v2", "vocab.txt");
+            if (!File.Exists(modelPath) || !File.Exists(vocabPath))
+            {
+                var msg = $"Local embedding model files not found. Expected: {modelPath} and {vocabPath}. " +
+                          "Ensure models are packaged alongside the CLI or set provider=api in the recipe.";
+                throw new FileNotFoundException(msg);
+            }
             _embeddingService = new LocalEmbeddingService(modelPath, vocabPath);
         }
 

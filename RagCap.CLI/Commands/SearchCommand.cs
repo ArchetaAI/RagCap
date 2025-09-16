@@ -25,18 +25,46 @@ namespace RagCap.CLI.Commands
             [DefaultValue("hybrid")]
             public string Mode { get; set; } = "hybrid";
 
+            [CommandOption("--candidate-limit")]
+            [DefaultValue(500)]
+            public int CandidateLimit { get; set; } = 500;
+
             [CommandOption("--json")]
             [DefaultValue(false)]
             public bool Json { get; set; }
+
+            // Optional VSS overrides
+            [CommandOption("--vss-path")]
+            public string? VssPath { get; set; }
+
+            [CommandOption("--vss-module")]
+            public string? VssModule { get; set; }
+
+            [CommandOption("--vss-search-func")]
+            public string? VssSearchFunc { get; set; }
+
+            [CommandOption("--vss-fromblob-func")]
+            public string? VssFromBlobFunc { get; set; }
+
+            // Optional sqlite-vec overrides
+            [CommandOption("--vec-path")]
+            public string? VecPath { get; set; }
+
+            [CommandOption("--vec-module")]
+            public string? VecModule { get; set; }
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
         {
-            await HandleSearch(settings.Capsule, settings.Query, settings.TopK, settings.Mode, settings.Json);
+            await HandleSearch(settings.Capsule, settings.Query, settings.TopK, settings.Mode, settings.CandidateLimit, settings.Json,
+                settings.VssPath, settings.VssModule, settings.VssSearchFunc, settings.VssFromBlobFunc,
+                settings.VecPath, settings.VecModule);
             return 0;
         }
 
-        private async Task HandleSearch(string capsule, string query, int topK, string mode, bool json)
+        private async Task HandleSearch(string capsule, string query, int topK, string mode, int candidateLimit, bool json,
+            string? vssPath, string? vssModule, string? vssSearchFunc, string? vssFromBlobFunc,
+            string? vecPath, string? vecModule)
         {
             if (!System.IO.File.Exists(capsule))
             {
@@ -47,7 +75,19 @@ namespace RagCap.CLI.Commands
             try
             {
                 var pipeline = new SearchPipeline(capsule);
-                var results = await pipeline.RunAsync(query, topK, mode);
+                var vss = new RagCap.Core.Search.VssOptions
+                {
+                    Path = vssPath,
+                    Module = vssModule,
+                    SearchFunction = vssSearchFunc,
+                    FromBlobFunction = vssFromBlobFunc
+                };
+                var vec = new RagCap.Core.Search.VecOptions
+                {
+                    Path = vecPath,
+                    Module = vecModule ?? "vec0"
+                };
+                var results = await pipeline.RunAsync(query, topK, mode, candidateLimit, vss, vec);
 
                 if (json)
                 {

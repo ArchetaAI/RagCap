@@ -17,6 +17,18 @@ namespace RagCap.Core.Capsule
             {
                 CapsuleSchema.InitializeSchema(_connection);
             }
+            else
+            {
+                // Attempt schema upgrade if needed
+                using var cmd = _connection.CreateCommand();
+                cmd.CommandText = "SELECT version FROM manifest WHERE id = 1;";
+                var result = cmd.ExecuteScalar();
+                var current = result == null ? 1 : Convert.ToInt32(result);
+                if (current < CapsuleSchema.CurrentVersion)
+                {
+                    CapsuleSchema.UpgradeSchema(_connection, current, CapsuleSchema.CurrentVersion);
+                }
+            }
         }
 
         public CapsuleManager(SqliteConnection connection)
@@ -36,9 +48,10 @@ namespace RagCap.Core.Capsule
         public async Task<long> AddChunkAsync(Chunk chunk)
         {
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = "INSERT INTO chunks (source_id, text) VALUES ($source_id, $text) RETURNING id;";
+            cmd.CommandText = "INSERT INTO chunks (source_id, text, token_count) VALUES ($source_id, $text, $token_count) RETURNING id;";
             cmd.Parameters.AddWithValue("$source_id", chunk.SourceDocumentId);
             cmd.Parameters.AddWithValue("$text", chunk.Content);
+            cmd.Parameters.AddWithValue("$token_count", chunk.TokenCount);
             return (long?)await cmd.ExecuteScalarAsync() ?? 0;
         }
 

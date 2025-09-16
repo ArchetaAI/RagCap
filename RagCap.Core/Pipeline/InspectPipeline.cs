@@ -53,12 +53,19 @@ namespace RagCap.Core.Pipeline
 
         private async Task<double> GetAverageChunkLength(CapsuleManager capsuleManager)
         {
-            // Compute true token average using the same tokenizer as the chunker
+            // Prefer persisted token_count if available for performance
+            using var cmd = capsuleManager.Connection.CreateCommand();
+            cmd.CommandText = "SELECT AVG(token_count) FROM chunks WHERE token_count IS NOT NULL;";
+            var avg = await cmd.ExecuteScalarAsync();
+            if (avg != null && avg != DBNull.Value)
+            {
+                return Convert.ToDouble(avg);
+            }
+
+            // Fallback: compute using shared tokenizer
             var tokenizer = new Tokenizer();
             double totalTokens = 0;
             long count = 0;
-
-            using var cmd = capsuleManager.Connection.CreateCommand();
             cmd.CommandText = "SELECT text FROM chunks;";
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -67,9 +74,7 @@ namespace RagCap.Core.Pipeline
                 totalTokens += tokenizer.CountTokens(text);
                 count++;
             }
-
-            if (count == 0) return 0;
-            return totalTokens / count;
+            return count == 0 ? 0 : totalTokens / count;
         }
     }
 

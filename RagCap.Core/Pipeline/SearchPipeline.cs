@@ -18,7 +18,9 @@ namespace RagCap.Core.Pipeline
             this.capsulePath = capsulePath;
         }
 
-        public async Task<IEnumerable<SearchResult>> RunAsync(string query, int topK, string mode)
+        public async Task<IEnumerable<SearchResult>> RunAsync(string query, int topK, string mode, int candidateLimit = 500,
+            RagCap.Core.Search.VssOptions? vssOptions = null,
+            RagCap.Core.Search.VecOptions? vecOptions = null)
         {
             Console.WriteLine("Running SearchPipeline");
             var validator = new CapsuleValidator();
@@ -57,17 +59,40 @@ namespace RagCap.Core.Pipeline
                 {
                     case "vector":
                         searcher = new VectorSearcher(capsuleManager, embeddingProvider);
-                        break;
+                        return await searcher.SearchAsync(query, topK);
                     case "bm25":
                         searcher = new BM25Searcher(capsuleManager);
-                        break;
+                        return await searcher.SearchAsync(query, topK);
+                    case "vss":
+                        // Try SQLite VSS; fall back to vector if unavailable
+                        try
+                        {
+                            var vss = new VssVectorSearcher(capsuleManager, embeddingProvider, vssOptions);
+                            return await vss.SearchAsync(query, topK);
+                        }
+                        catch
+                        {
+                            var vec = new VectorSearcher(capsuleManager, embeddingProvider);
+                            return await vec.SearchAsync(query, topK);
+                        }
+                    case "vec":
+                        // sqlite-vec (vec0) module
+                        try
+                        {
+                            var vec = new VecVectorSearcher(capsuleManager, embeddingProvider, vecOptions ?? VecOptions.FromEnvironment());
+                            return await vec.SearchAsync(query, topK);
+                        }
+                        catch
+                        {
+                            // fallback to hybrid
+                            var hybrid2 = new HybridSearcher(capsuleManager, embeddingProvider, candidateLimit);
+                            return await hybrid2.SearchAsync(query, topK);
+                        }
                     case "hybrid":
                     default:
-                        searcher = new HybridSearcher(capsuleManager, embeddingProvider);
-                        break;
+                        var hybrid = new HybridSearcher(capsuleManager, embeddingProvider, candidateLimit);
+                        return await hybrid.SearchAsync(query, topK);
                 }
-
-                return await searcher.SearchAsync(query, topK);
             }
         }
     }

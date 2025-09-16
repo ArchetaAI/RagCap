@@ -16,7 +16,7 @@ namespace RagCap.Core.Pipeline
     {
         private readonly CapsuleManager _capsuleManager;
         private readonly IEmbeddingProvider _embeddingProvider;
-        private readonly TokenChunker _tokenChunker;
+        private readonly object _chunker; // TokenChunker or BertTokenChunker
         private readonly Preprocessor _preprocessor;
 
         public BuildPipeline(CapsuleManager capsuleManager, IEmbeddingProvider embeddingProvider, Recipe? recipe = null)
@@ -24,15 +24,42 @@ namespace RagCap.Core.Pipeline
             _capsuleManager = capsuleManager;
             _embeddingProvider = embeddingProvider;
 
-            var chunkSize = recipe?.Chunking?.Size ?? 500;
+            var chunkSize = recipe?.Chunking?.Size ?? 200;
             var overlap = recipe?.Chunking?.Overlap ?? 50;
-            _tokenChunker = new TokenChunker(chunkSize, overlap);
+            var useBert = recipe?.Chunking?.BertAware ?? true;
+            if (useBert)
+            {
+                try
+                {
+                    _chunker = new RagCap.Core.Chunking.BertTokenChunker(chunkSize, overlap);
+                }
+                catch (Exception)
+                {
+                    // Fallback to simple chunker if BERT vocab not available
+                    _chunker = new TokenChunker(chunkSize, overlap);
+                }
+            }
+            else
+            {
+                _chunker = new TokenChunker(chunkSize, overlap);
+            }
 
             var boilerplate = recipe?.Preprocess?.Boilerplate ?? true;
             var preserveCode = recipe?.Preprocess?.PreserveCode ?? true;
             var flattenTables = recipe?.Preprocess?.FlattenTables ?? true;
             var detectLanguage = recipe?.Preprocess?.DetectLanguage ?? true;
             _preprocessor = new Preprocessor(boilerplate, preserveCode, flattenTables, detectLanguage);
+
+            // Configure HTML extraction options if provided via recipe
+            try
+            {
+                RagCap.Core.Ingestion.HtmlFileLoader.Options = new RagCap.Core.Ingestion.HtmlFileLoader.HtmlExtractionOptions
+                {
+                    IncludeHeadingContext = recipe?.Preprocess?.IncludeHeadingContext ?? true,
+                    IncludeTitle = true
+                };
+            }
+            catch { }
         }
 
         public async Task RunAsync(string inputPath, List<string>? sourcesFromRecipe = null)
@@ -68,7 +95,25 @@ namespace RagCap.Core.Pipeline
             int chunks = 0;
             int embeddings = 0;
 
-            foreach (var file in files)
+            // Normalize and filter files: supported extensions only, skip hidden
+            var supported = new HashSet<string>(new[] { ".txt", ".md", ".pdf", ".html" }, StringComparer.OrdinalIgnoreCase);
+            var filtered = new List<string>();
+            foreach (var f in files)
+            {
+                try
+                {
+                    var ext = Path.GetExtension(f);
+                    if (!supported.Contains(ext)) continue;
+                    var attr = File.GetAttributes(f);
+                    if ((attr & FileAttributes.Hidden) == FileAttributes.Hidden) continue;
+                    filtered.Add(f);
+                }
+                catch { /* ignore */ }
+            }
+
+            RagCap.Core.Utils.Logging.Debug($"Discovered {filtered.Count} files after filtering");
+
+            foreach (var file in filtered)
             {
                 try
                 {
@@ -89,7 +134,9 @@ namespace RagCap.Core.Pipeline
                     sourceDocument.Id = sourceDocumentId.ToString();
                     sources++;
 
-                    var chunkContent = _tokenChunker.Chunk(sourceDocument);
+                    var chunkContent = (_chunker is RagCap.Core.Chunking.BertTokenChunker b)
+                        ? b.Chunk(sourceDocument)
+                        : ((TokenChunker)_chunker).Chunk(sourceDocument);
 
                     foreach (var chunk in chunkContent)
                     {
@@ -109,11 +156,11 @@ namespace RagCap.Core.Pipeline
                 }
                 catch (NotSupportedException ex)
                 {
-                    Console.WriteLine($"Skipping unsupported file type: {file}. {ex.Message}");
+                    RagCap.Core.Utils.Logging.Debug($"Skipping unsupported file type: {file}. {ex.Message}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error processing file {file}: {ex.Message}");
+                    RagCap.Core.Utils.Logging.Error($"Error processing file {file}: {ex.Message}");
                 }
             }
 

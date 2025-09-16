@@ -30,7 +30,7 @@ namespace RagCap.Core.Search
                 WHERE chunks_fts MATCH $query 
                 ORDER BY score 
                 LIMIT $limit";
-            command.Parameters.AddWithValue("$query", EscapeFtsQuery(query));
+            command.Parameters.AddWithValue("$query", BuildSafeFtsQuery(query));
             command.Parameters.AddWithValue("$limit", topK);
 
             using var reader = await command.ExecuteReaderAsync();
@@ -48,21 +48,61 @@ namespace RagCap.Core.Search
             return results;
         }
 
-        private string EscapeFtsQuery(string query)
+        public async Task<List<long>> SearchChunkIdsAsync(string query, int limit)
         {
-            // Escape double quotes by doubling them.
-            string escapedQuery = query.Replace("\"", "\"\"");
+            var ids = new List<long>();
 
-            // Escape other special FTS5 characters.
-            escapedQuery = escapedQuery.Replace("-", "\"-\"");
-            escapedQuery = escapedQuery.Replace("*", "\"*\"");
-            escapedQuery = escapedQuery.Replace("^", "\"^\"");
-            escapedQuery = escapedQuery.Replace("$", "\"$\"");
-            escapedQuery = escapedQuery.Replace("(", "\"(\"");
-            escapedQuery = escapedQuery.Replace(")", "\")\")");
+            using var connection = capsuleManager.Connection;
+            await connection.OpenAsync();
 
-            // Enclose the entire query in double quotes.
-            return "\"" + escapedQuery + "\"";
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT c.id
+                FROM chunks_fts
+                JOIN chunks c ON c.id = chunks_fts.rowid
+                WHERE chunks_fts MATCH $query 
+                ORDER BY bm25(chunks_fts)
+                LIMIT $limit";
+            command.Parameters.AddWithValue("$query", BuildSafeFtsQuery(query));
+            command.Parameters.AddWithValue("$limit", limit);
+
+            using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                ids.Add(reader.GetInt64(0));
+            }
+
+            return ids;
+        }
+
+        private string BuildSafeFtsQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return "\"\""; // match nothing
+            }
+            var matches = System.Text.RegularExpressions.Regex.Matches(query, @"[\p{L}\p{N}][\p{L}\p{N}_\-']*");
+            var terms = new List<string>(matches.Count);
+            foreach (System.Text.RegularExpressions.Match m in matches)
+            {
+                var t = m.Value.Trim();
+                if (t.Length > 0) terms.Add(t);
+            }
+            const int MaxTerms = 12;
+            if (terms.Count > MaxTerms)
+            {
+                terms = terms.GetRange(0, MaxTerms);
+            }
+            if (terms.Count == 0)
+            {
+                var escaped = query.Replace("\"", "\"\"");
+                return "\"" + escaped + "\"";
+            }
+            for (int i = 0; i < terms.Count; i++)
+            {
+                terms[i] = "\"" + terms[i].Replace("\"", "\"\"") + "\"";
+            }
+            return string.Join(" OR ", terms);
         }
     }
 }

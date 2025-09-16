@@ -16,6 +16,9 @@ app.Configure(config =>
     config.AddCommand<SearchCommand>("search");
     config.AddCommand<ServeCommand>("serve");
     config.AddCommand<VerifyCommand>("verify");
+    config.AddCommand<VerifyVssCommand>("verify-vss");
+    config.AddCommand<VerifyVecCommand>("verify-vec");
+    config.AddCommand<IndexCommand>("index");
 });
 
 return await app.RunAsync(args);

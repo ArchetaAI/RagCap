@@ -8,10 +8,12 @@ sources:
     # type: pdf
 
 chunking:
-  # Max tokens per chunk (smaller -> more chunks)
+  # Max tokens per chunk (BERT wordpiece tokens, smaller -> more chunks)
   size: 200
   # Overlap between adjacent chunks in tokens
   overlap: 40
+  # Use BERT-aware tokenization for chunk boundaries
+  bertAware: true
 
 preprocess:
   # Strip boilerplate (headers/footers/nav) from HTML
@@ -22,6 +24,8 @@ preprocess:
   flattenTables: true
   # Add detected language to source metadata
   detectLanguage: true
+  # Include "H1 > H2 > H3" context before each HTML block
+  includeHeadingContext: true
 
 embeddings:
   # "local" (default) or "api"

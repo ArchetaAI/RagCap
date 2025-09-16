@@ -22,19 +22,43 @@ namespace RagCap.Core.Search
 
         public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
         {
-            var queryEmbedding = await embeddingProvider.GenerateEmbeddingAsync(query);
+            return await SearchAsyncCandidates(query, topK, null);
+        }
 
+        public async Task<IEnumerable<SearchResult>> SearchAsyncCandidates(string query, int topK, IEnumerable<long>? candidateChunkIds)
+        {
+            var queryEmbedding = await embeddingProvider.GenerateEmbeddingAsync(query);
             var results = new List<SearchResult>();
 
             using var connection = capsuleManager.Connection;
             await connection.OpenAsync();
 
             using var command = connection.CreateCommand();
-            command.CommandText = @"
+            if (candidateChunkIds != null && candidateChunkIds.Any())
+            {
+                var ids = candidateChunkIds.Distinct().ToList();
+                var paramNames = new List<string>(ids.Count);
+                for (int i = 0; i < ids.Count; i++)
+                {
+                    var p = "$id" + i;
+                    paramNames.Add(p);
+                    command.Parameters.AddWithValue(p, ids[i]);
+                }
+                command.CommandText = $@"
+                SELECT c.id, s.path, c.text, e.vector
+                FROM embeddings e
+                JOIN chunks c ON c.id = e.chunk_id
+                JOIN sources s ON s.id = c.source_id
+                WHERE c.id IN ({string.Join(",", paramNames)})";
+            }
+            else
+            {
+                command.CommandText = @"
                 SELECT c.id, s.path, c.text, e.vector
                 FROM embeddings e
                 JOIN chunks c ON c.id = e.chunk_id
                 JOIN sources s ON s.id = c.source_id";
+            }
 
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -56,4 +80,3 @@ namespace RagCap.Core.Search
         }
     }
 }
-
