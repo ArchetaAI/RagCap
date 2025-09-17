@@ -13,6 +13,22 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- NuGet package metadata (optional library) -->
+    <PackageId>RagCap.Export</PackageId>
+    <Title>RagCap Export</Title>
+    <Description>Export utilities for RagCap capsules (e.g., Parquet, FAISS, HNSW formats).</Description>
+    <Authors>RagCap</Authors>
+    <RepositoryUrl>https://github.com/ArchetaAI/ragcap</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
+
+  <!-- Include root README and LICENSE in the NuGet package -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="README.md" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="LICENSE" />
+  </ItemGroup>
 
 </Project>

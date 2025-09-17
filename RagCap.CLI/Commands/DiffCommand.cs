@@ -51,7 +51,7 @@ namespace RagCap.CLI.Commands
 
             foreach (var item in result.Manifest)
             {
-                table.AddRow("Manifest", item.Key, item.Value.Item1 ?? string.Empty, item.Value.Item2 ?? string.Empty);
+                table.AddRow("Manifest", item.Key, item.Value.Value1 ?? string.Empty, item.Value.Value2 ?? string.Empty);
             }
 
             if (result.AddedSources.Any())
@@ -61,12 +61,12 @@ namespace RagCap.CLI.Commands
             if (result.ModifiedSources.Any())
                 table.AddRow("Sources", "Modified", string.Join("\n", result.ModifiedSources), string.Join("\n", result.ModifiedSources));
 
-            table.AddRow("Chunks", "Count", result.ChunkCount.Item1.ToString(), result.ChunkCount.Item2.ToString());
-            table.AddRow("Chunks", "Avg Size", $"{result.AverageChunkSize.Item1:F2}", $"{result.AverageChunkSize.Item2:F2}");
+            table.AddRow("Chunks", "Count", result.ChunkCount.Value1.ToString(), result.ChunkCount.Value2.ToString());
+            table.AddRow("Chunks", "Avg Size", $"{result.AverageChunkSize.Value1:F2}", $"{result.AverageChunkSize.Value2:F2}");
 
-            table.AddRow("Embeddings", "Dimensions", result.EmbeddingDimensions.Item1.ToString(), result.EmbeddingDimensions.Item2.ToString());
+            table.AddRow("Embeddings", "Dimensions", result.EmbeddingDimensions.Value1.ToString(), result.EmbeddingDimensions.Value2.ToString());
 
-            if (result.Recipe.Item1 != result.Recipe.Item2)
+            if (result.Recipe.Value1 != result.Recipe.Value2)
             {
                 table.AddRow("Recipe", "", "Recipe differs", "Recipe differs");
             }

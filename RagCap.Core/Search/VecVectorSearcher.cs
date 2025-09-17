@@ -103,7 +103,15 @@ namespace RagCap.Core.Search
             }
 
             conn.EnableExtensions(true);
-            conn.LoadExtension(path);
+            try
+            {
+                conn.LoadExtension(path);
+            }
+            catch
+            {
+                // Fallback to common entry point name for sqlite-vec
+                conn.LoadExtension(path, "sqlite3_vec_init");
+            }
         }
 
         private static IEnumerable<string> PossibleLibraryNames()

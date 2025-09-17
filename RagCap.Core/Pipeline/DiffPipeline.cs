@@ -43,7 +43,7 @@ namespace RagCap.Core.Pipeline
 
                 if (value1 != value2)
                 {
-                    result.Manifest[key] = (value1, value2);
+                    result.Manifest[key] = new DiffValue<string?> { Value1 = value1, Value2 = value2 };
                 }
             }
         }
@@ -70,12 +70,13 @@ namespace RagCap.Core.Pipeline
             var chunks1 = await _capsule1Manager.GetAllChunksAsync();
             var chunks2 = await _capsule2Manager.GetAllChunksAsync();
 
-            result.ChunkCount = (chunks1.Count(), chunks2.Count());
+            result.ChunkCount.Value1 = chunks1.Count();
+            result.ChunkCount.Value2 = chunks2.Count();
 
             if (chunks1.Any())
-                result.AverageChunkSize = (chunks1.Average(c => c.Content?.Length ?? 0), result.AverageChunkSize.Item2);
+                result.AverageChunkSize.Value1 = chunks1.Average(c => c.Content?.Length ?? 0);
             if (chunks2.Any())
-                result.AverageChunkSize = (result.AverageChunkSize.Item1, chunks2.Average(c => c.Content?.Length ?? 0));
+                result.AverageChunkSize.Value2 = chunks2.Average(c => c.Content?.Length ?? 0);
         }
 
         private async Task CompareEmbeddings(DiffResult result)
@@ -83,10 +84,8 @@ namespace RagCap.Core.Pipeline
             var embedding1 = await _capsule1Manager.GetEmbeddingAsync("1");
             var embedding2 = await _capsule2Manager.GetEmbeddingAsync("1");
 
-            var dim1 = embedding1?.Dimension ?? 0;
-            var dim2 = embedding2?.Dimension ?? 0;
-
-            result.EmbeddingDimensions = (dim1, dim2);
+            result.EmbeddingDimensions.Value1 = embedding1?.Dimension ?? 0;
+            result.EmbeddingDimensions.Value2 = embedding2?.Dimension ?? 0;
         }
 
         private async Task CompareRecipes(DiffResult result)
@@ -96,7 +95,8 @@ namespace RagCap.Core.Pipeline
 
             if (recipe1 != recipe2)
             {
-                result.Recipe = (recipe1, recipe2);
+                result.Recipe.Value1 = recipe1;
+                result.Recipe.Value2 = recipe2;
             }
         }
     }

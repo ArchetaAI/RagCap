@@ -4,11 +4,21 @@ using System.Threading.Tasks;
 
 namespace RagCap.Core.Capsule
 {
+    /// <summary>
+    /// Manages the lifecycle of a RagCap capsule.
+    /// </summary>
     public class CapsuleManager : System.IDisposable
     {
         private readonly SqliteConnection _connection;
+        /// <summary>
+        /// Gets a new connection to the capsule database.
+        /// </summary>
         public SqliteConnection Connection => new SqliteConnection(_connection.ConnectionString);
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CapsuleManager"/> class.
+        /// </summary>
+        /// <param name="capsulePath">The path to the capsule file.</param>
         public CapsuleManager(string capsulePath) : this(new SqliteConnection($"Data Source={capsulePath}"))
         {
             bool newCapsule = !File.Exists(capsulePath);
@@ -31,11 +41,20 @@ namespace RagCap.Core.Capsule
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CapsuleManager"/> class.
+        /// </summary>
+        /// <param name="connection">The SQLite connection to use.</param>
         public CapsuleManager(SqliteConnection connection)
         {
             _connection = connection;
         }
 
+        /// <summary>
+        /// Adds a source document to the capsule.
+        /// </summary>
+        /// <param name="document">The source document to add.</param>
+        /// <returns>The ID of the newly added source document.</returns>
         public async Task<long> AddSourceDocumentAsync(SourceDocument document)
         {
             using var cmd = _connection.CreateCommand();
@@ -45,6 +64,11 @@ namespace RagCap.Core.Capsule
             return (long?)await cmd.ExecuteScalarAsync() ?? 0;
         }
 
+        /// <summary>
+        /// Adds a chunk to the capsule.
+        /// </summary>
+        /// <param name="chunk">The chunk to add.</param>
+        /// <returns>The ID of the newly added chunk.</returns>
         public async Task<long> AddChunkAsync(Chunk chunk)
         {
             using var cmd = _connection.CreateCommand();
@@ -55,6 +79,10 @@ namespace RagCap.Core.Capsule
             return (long?)await cmd.ExecuteScalarAsync() ?? 0;
         }
 
+        /// <summary>
+        /// Adds an embedding to the capsule.
+        /// </summary>
+        /// <param name="embedding">The embedding to add.</param>
         public async Task AddEmbeddingAsync(Embedding embedding)
         {
 #nullable disable
@@ -71,6 +99,11 @@ namespace RagCap.Core.Capsule
 #nullable enable
         }
 
+        /// <summary>
+        /// Sets a metadata value in the capsule.
+        /// </summary>
+        /// <param name="key">The metadata key.</param>
+        /// <param name="value">The metadata value.</param>
         public async Task SetMetaValueAsync(string key, string value)
         {
             using var cmd = _connection.CreateCommand();
@@ -80,6 +113,11 @@ namespace RagCap.Core.Capsule
             await cmd.ExecuteNonQueryAsync();
         }
 
+        /// <summary>
+        /// Gets a metadata value from the capsule.
+        /// </summary>
+        /// <param name="key">The metadata key.</param>
+        /// <returns>The metadata value.</returns>
         public async Task<string?> GetMetaValueAsync(string key)
         {
             using var cmd = _connection.CreateCommand();
@@ -88,6 +126,11 @@ namespace RagCap.Core.Capsule
             return (string?)await cmd.ExecuteScalarAsync();
         }
 
+        /// <summary>
+        /// Gets a chunk from the capsule.
+        /// </summary>
+        /// <param name="chunkId">The ID of the chunk to get.</param>
+        /// <returns>The chunk.</returns>
         public async Task<Chunk?> GetChunkAsync(long chunkId)
         {
             using var cmd = _connection.CreateCommand();
@@ -106,6 +149,11 @@ namespace RagCap.Core.Capsule
             return null;
         }
 
+        /// <summary>
+        /// Gets a source document from the capsule.
+        /// </summary>
+        /// <param name="sourceId">The ID of the source document to get.</param>
+        /// <returns>The source document.</returns>
         public async Task<SourceDocument?> GetSourceDocumentAsync(long sourceId)
         {
             using var cmd = _connection.CreateCommand();
@@ -124,6 +172,11 @@ namespace RagCap.Core.Capsule
             return null;
         }
 
+        /// <summary>
+        /// Gets an embedding from the capsule.
+        /// </summary>
+        /// <param name="chunkId">The ID of the chunk to get the embedding for.</param>
+        /// <returns>The embedding.</returns>
         public async Task<Embedding?> GetEmbeddingAsync(string chunkId)
         {
             using var cmd = _connection.CreateCommand();
@@ -148,6 +201,10 @@ namespace RagCap.Core.Capsule
             return null;
         }
 
+        /// <summary>
+        /// Gets all chunks from the capsule.
+        /// </summary>
+        /// <returns>A list of all chunks.</returns>
         public async Task<List<Chunk>> GetAllChunksAsync()
         {
             var chunks = new List<Chunk>();
@@ -166,6 +223,10 @@ namespace RagCap.Core.Capsule
             return chunks;
         }
 
+        /// <summary>
+        /// Gets all source documents from the capsule.
+        /// </summary>
+        /// <returns>A list of all source documents.</returns>
         public async Task<List<SourceDocument>> GetAllSourceDocumentsAsync()
         {
             var documents = new List<SourceDocument>();
@@ -184,6 +245,10 @@ namespace RagCap.Core.Capsule
             return documents;
         }
 
+        /// <summary>
+        /// Gets all metadata from the capsule.
+        /// </summary>
+        /// <returns>A dictionary of all metadata.</returns>
         public async Task<Dictionary<string, string>> GetAllMetaAsync()
         {
             var meta = new Dictionary<string, string>();
@@ -197,6 +262,9 @@ namespace RagCap.Core.Capsule
             return meta;
         }
 
+        /// <summary>
+        /// Disposes the capsule manager.
+        /// </summary>
         public void Dispose()
         {
             _connection.Dispose();

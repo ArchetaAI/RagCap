@@ -33,7 +33,15 @@ namespace RagCap.CLI.Commands
                     return Task.FromResult(1);
                 }
                 conn.EnableExtensions(true);
-                conn.LoadExtension(path);
+                try
+                {
+                    conn.LoadExtension(path);
+                }
+                catch
+                {
+                    // Fallback to common sqlite-vec entry point
+                    conn.LoadExtension(path, "sqlite3_vec_init");
+                }
                 AnsiConsole.MarkupLine($"[green]Loaded sqlite-vec from:[/] {path}");
 
                 using (var cmd = conn.CreateCommand())

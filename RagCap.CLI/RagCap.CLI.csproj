@@ -25,17 +25,45 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RuntimeIdentifiers>win-x64;linux-x64;osx-x64</RuntimeIdentifiers>
+    <!-- Package as .NET tool -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>ragcap</ToolCommandName>
+    <PackageId>RagCap.CLI.Tool</PackageId>
+    <Title>RagCap CLI</Title>
+    <Description>RagCap command line interface for building and querying RAG capsules.</Description>
+    <Authors>RagCap</Authors>
+    <RepositoryUrl>https://github.com/ArchetaAI/ragcap</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
+  <!-- For development, do not force self-contained or a fixed RID.
+       Use `dotnet publish` flags instead when creating distributables. -->
   <PropertyGroup>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>false</SelfContained>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
     <TrimmerRootAssembly Include="Spectre.Console.Cli" />
+  </ItemGroup>
+
+  <!-- Include root README and LICENSE in the tool package -->
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="README.md" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="LICENSE" />
+  </ItemGroup>
+
+  <!-- Include local embedding model assets in the tool package under tools/net8.0/any/models/... -->
+  <ItemGroup>
+    <Content Include="..\RagCap.Core\models\**\*">
+      <Pack>true</Pack>
+      <PackagePath>tools/net8.0/any/models/%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
+      <CopyToOutput>false</CopyToOutput>
+    </Content>
   </ItemGroup>
 
 </Project>

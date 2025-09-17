@@ -21,6 +21,16 @@
       "Format": "parquet",
       "FilePath": "C:\\Users\\Caleb\\Desktop\\RagCap\\my_test.parquet",
       "Timestamp": "2025-09-14T15:16:26.7226504Z"
+    },
+    {
+      "Format": "parquet",
+      "FilePath": "export_test/export.parquet",
+      "Timestamp": "2025-09-17T17:45:00.410432Z"
+    },
+    {
+      "Format": "faiss",
+      "FilePath": "export_test/export.faiss",
+      "Timestamp": "2025-09-17T17:45:12.9908563Z"
     }
   ]
 }

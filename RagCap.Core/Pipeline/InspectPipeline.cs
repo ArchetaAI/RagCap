@@ -37,24 +37,31 @@ namespace RagCap.Core.Pipeline
 
         private async Task<long> GetDimension(CapsuleManager capsuleManager)
         {
-            using var cmd = capsuleManager.Connection.CreateCommand();
+            using var conn = capsuleManager.Connection;
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT dimension FROM embeddings LIMIT 1;";
             var result = await cmd.ExecuteScalarAsync();
-            return result == null ? 0 : (long)result;
+            return result == null || result == DBNull.Value ? 0 : Convert.ToInt64(result);
         }
 
         private async Task<long> CountRows(CapsuleManager capsuleManager, string tableName)
         {
-            using var cmd = capsuleManager.Connection.CreateCommand();
+            using var conn = capsuleManager.Connection;
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = $"SELECT COUNT(*) FROM {tableName};";
             var result = await cmd.ExecuteScalarAsync();
-            return result == null ? 0 : (long)result;
+            return result == null || result == DBNull.Value ? 0 : Convert.ToInt64(result);
         }
 
         private async Task<double> GetAverageChunkLength(CapsuleManager capsuleManager)
         {
+            using var conn = capsuleManager.Connection;
+            await conn.OpenAsync();
+
             // Prefer persisted token_count if available for performance
-            using var cmd = capsuleManager.Connection.CreateCommand();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT AVG(token_count) FROM chunks WHERE token_count IS NOT NULL;";
             var avg = await cmd.ExecuteScalarAsync();
             if (avg != null && avg != DBNull.Value)
