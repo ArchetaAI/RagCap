@@ -1,4 +1,3 @@
-
 using RagCap.Core.Capsule;
 using RagCap.Core.Embeddings;
 using RagCap.Core.Search;
@@ -6,6 +5,7 @@ using RagCap.Core.Validation;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using RagCap.Core.Utils;
 
 namespace RagCap.Core.Pipeline
 {
@@ -38,10 +38,11 @@ namespace RagCap.Core.Pipeline
                 IEmbeddingProvider embeddingProvider;
                 if (provider.Equals("api", StringComparison.OrdinalIgnoreCase))
                 {
-                    var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY");
+                    var config = ConfigManager.GetConfig();
+                    var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY") ?? config.Api?.ApiKey;
                     if (string.IsNullOrEmpty(apiKey))
                     {
-                        throw new Exception("RAGCAP_API_KEY environment variable must be set when using the API provider.");
+                        throw new Exception("RAGCAP_API_KEY environment variable or config file entry must be set when using the API provider.");
                     }
                     if (string.IsNullOrEmpty(model))
                     {

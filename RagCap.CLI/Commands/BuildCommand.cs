@@ -11,6 +11,8 @@ using Spectre.Console;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using RagCap.Core.Pipeline;
+using System;
+using RagCap.Core.Utils;
 
 namespace RagCap.CLI.Commands
 {
@@ -25,8 +27,7 @@ namespace RagCap.CLI.Commands
             public string? Output { get; set; }
 
             [CommandOption("--provider")]
-            [DefaultValue("local")]
-            public string Provider { get; set; } = "local";
+            public string? Provider { get; set; }
 
             [CommandOption("--model")]
             public string? Model { get; set; }
@@ -72,12 +73,14 @@ namespace RagCap.CLI.Commands
                 }
             }
 
+            var config = ConfigManager.GetConfig();
+
             var inputPath = settings.Input ?? recipe?.Sources?.FirstOrDefault()?.Path;
             var outputPath = settings.Output ?? recipe?.Output?.Path;
-            var provider = settings.Provider ?? recipe?.Embeddings?.Provider ?? "local";
-            var model = settings.Model ?? recipe?.Embeddings?.Model;
-            var apiVersion = settings.ApiVersion ?? recipe?.Embeddings?.ApiVersion;
-            var endpoint = settings.Endpoint ?? recipe?.Embeddings?.Endpoint;
+            var provider = settings.Provider ?? Environment.GetEnvironmentVariable("RAGCAP_EMBEDDING_PROVIDER") ?? config.Embedding?.Provider ?? recipe?.Embeddings?.Provider ?? "local";
+            var model = settings.Model ?? Environment.GetEnvironmentVariable("RAGCAP_EMBEDDING_MODEL") ?? config.Embedding?.Model ?? recipe?.Embeddings?.Model;
+            var apiVersion = settings.ApiVersion ?? Environment.GetEnvironmentVariable("RAGCAP_API_VERSION") ?? config.Api?.ApiVersion ?? recipe?.Embeddings?.ApiVersion;
+            var endpoint = settings.Endpoint ?? Environment.GetEnvironmentVariable("RAGCAP_ENDPOINT") ?? Environment.GetEnvironmentVariable("RAGCAP_AZURE_ENDPOINT") ?? config.Api?.Endpoint ?? recipe?.Embeddings?.Endpoint;
 
             if (string.IsNullOrEmpty(inputPath))
             {
@@ -103,10 +106,11 @@ namespace RagCap.CLI.Commands
                 IEmbeddingProvider embeddingProvider;
                 if (provider.Equals("api", StringComparison.OrdinalIgnoreCase))
                 {
-                    var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY");
+                    var config = ConfigManager.GetConfig();
+                    var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY") ?? config.Api?.ApiKey;
                     if (string.IsNullOrEmpty(apiKey))
                     {
-                        AnsiConsole.MarkupLine("[red]Error: RAGCAP_API_KEY environment variable must be set when using the API provider.[/]");
+                        AnsiConsole.MarkupLine("[red]Error: RAGCAP_API_KEY environment variable or config file entry must be set when using the API provider.[/]");
                         return;
                     }
                     embeddingProvider = new ApiEmbeddingProvider(apiKey, model, endpoint, apiVersion);
@@ -114,6 +118,9 @@ namespace RagCap.CLI.Commands
                 else
                 {
                     embeddingProvider = new LocalEmbeddingProvider();
+                    // For local provider, we currently ship the ONNX model all-MiniLM-L6-v2
+                    // Record this explicitly regardless of config/env defaults.
+                    model = "all-MiniLM-L6-v2";
                 }
 
                 await capsuleManager.SetMetaValueAsync("embedding_provider", provider);

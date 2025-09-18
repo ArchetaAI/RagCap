@@ -30,7 +30,11 @@ namespace RagCap.Core.Pipeline
                     AvgChunkLength = await GetAverageChunkLength(capsuleManager),
                     Embeddings = (int)await CountRows(capsuleManager, "embeddings")
                 };
-
+                // Fallback: if local provider and model missing, show default local model name
+                if (string.Equals(result.Provider, "local", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(result.Model))
+                {
+                    result.Model = "all-MiniLM-L6-v2";
+                }
                 return result;
             }
         }

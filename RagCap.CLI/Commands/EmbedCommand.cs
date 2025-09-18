@@ -1,4 +1,3 @@
-
 using RagCap.Core.Capsule;
 using RagCap.Core.Embeddings;
 using RagCap.Core.Pipeline;
@@ -6,6 +5,8 @@ using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using Spectre.Console;
+using System;
+using RagCap.Core.Utils;
 
 namespace RagCap.CLI.Commands
 {
@@ -20,59 +21,65 @@ namespace RagCap.CLI.Commands
             public required string SourceFile { get; set; }
 
             [CommandOption("--provider")]
-            [DefaultValue("local")]
-            public string Provider { get; set; } = "local";
+            public string? Provider { get; set; }
 
-            [CommandOption("--api-provider")]
-            [DefaultValue("openai")]
-            public string ApiProvider { get; set; } = "openai";
+            [CommandOption("--model")]
+            public string? Model { get; set; }
 
             [CommandOption("--api-key")]
             public string? ApiKey { get; set; }
+
+            [CommandOption("--api-version")]
+            public string? ApiVersion { get; set; }
+
+            [CommandOption("--endpoint")]
+            public string? Endpoint { get; set; }
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
         {
-            await HandleEmbed(settings.CapsulePath, settings.SourceFile, settings.Provider, settings.ApiProvider, settings.ApiKey);
+            await HandleEmbed(settings);
             return 0;
         }
 
-        private async Task HandleEmbed(string capsulePath, string sourceFile, string provider, string? apiProvider, string? apiKey)
+        private async Task HandleEmbed(Settings settings)
         {
-            using (var capsuleManager = new CapsuleManager(capsulePath))
+            var config = ConfigManager.GetConfig();
+
+            var provider = settings.Provider ?? Environment.GetEnvironmentVariable("RAGCAP_EMBEDDING_PROVIDER") ?? config.Embedding?.Provider ?? "local";
+            var model = settings.Model ?? Environment.GetEnvironmentVariable("RAGCAP_EMBEDDING_MODEL") ?? config.Embedding?.Model;
+            var apiVersion = settings.ApiVersion ?? Environment.GetEnvironmentVariable("RAGCAP_API_VERSION") ?? config.Api?.ApiVersion;
+            var endpoint = settings.Endpoint ?? Environment.GetEnvironmentVariable("RAGCAP_ENDPOINT") ?? Environment.GetEnvironmentVariable("RAGCAP_AZURE_ENDPOINT") ?? config.Api?.Endpoint;
+
+            using (var capsuleManager = new CapsuleManager(settings.CapsulePath))
             {
                 IEmbeddingProvider embeddingProvider;
                 if (provider.Equals("api", StringComparison.OrdinalIgnoreCase))
                 {
+                    var apiKey = settings.ApiKey ?? Environment.GetEnvironmentVariable("RAGCAP_API_KEY") ?? config.Api?.ApiKey;
                     if (string.IsNullOrEmpty(apiKey))
                     {
-                        AnsiConsole.MarkupLine("[red]Error: API key must be provided for the API provider via --api-key or RAGCAP_API_KEY environment variable.[/]");
+                        AnsiConsole.MarkupLine("[red]Error: API key must be provided for the API provider via --api-key, RAGCAP_API_KEY environment variable, or config file.[/]");
                         return;
                     }
-                    if (string.IsNullOrEmpty(apiProvider))
-                    {
-                        AnsiConsole.MarkupLine("[red]Error: API provider name must be specified via --api-provider.[/]");
-                        return;
-                    }
-                    embeddingProvider = new ApiEmbeddingProvider(apiProvider!, apiKey!);
+                    embeddingProvider = new ApiEmbeddingProvider(apiKey, model, endpoint, apiVersion);
                 }
                 else
                 {
                     embeddingProvider = new LocalEmbeddingProvider();
-                    await Task.CompletedTask; // To satisfy async method warning
                 }
 
                 // Load content
-                var loader = RagCap.Core.Ingestion.FileLoaderFactory.GetLoader(sourceFile);
-                var content = loader.LoadContent(sourceFile);
+                var loader = RagCap.Core.Ingestion.FileLoaderFactory.GetLoader(settings.SourceFile);
+                var content = loader.LoadContent(settings.SourceFile);
 
                 // Create SourceDocument
                 var sourceDocument = new RagCap.Core.Capsule.SourceDocument
                 {
-                    Path = sourceFile,
+                    Path = settings.SourceFile,
                     Hash = RagCap.Core.Utils.HashUtils.GetSha256Hash(content),
                     Content = content,
-                    DocumentType = System.IO.Path.GetExtension(sourceFile).TrimStart('.').ToLowerInvariant()
+                    DocumentType = System.IO.Path.GetExtension(settings.SourceFile).TrimStart('.').ToLowerInvariant()
                 };
 
                 // Add SourceDocument to capsule
@@ -99,7 +106,7 @@ namespace RagCap.CLI.Commands
                     await capsuleManager.AddEmbeddingAsync(embeddingRecord);
                 }
 
-                AnsiConsole.MarkupLine($"[green]Successfully embedded:[/] {sourceFile}");
+                AnsiConsole.MarkupLine($"[green]Successfully embedded:[/] {settings.SourceFile}");
             }
         }
     }

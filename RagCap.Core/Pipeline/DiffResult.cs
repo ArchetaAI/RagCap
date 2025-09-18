@@ -4,8 +4,8 @@ namespace RagCap.Core.Pipeline
 {
     public class DiffValue<T>
     {
-        public T Value1 { get; set; }
-        public T Value2 { get; set; }
+        public T? Value1 { get; set; }
+        public T? Value2 { get; set; }
     }
 
     public class DiffResult

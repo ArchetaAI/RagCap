@@ -1,5 +1,6 @@
 
 using RagCap.Core.Capsule;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ public class FaissExporter : ExporterBase
 
         if (embeddings.Count == 0)
         {
-            return;
+            throw new InvalidOperationException("No embeddings found in capsule; cannot export FAISS index. Build or embed the capsule first.");
         }
 
         var dimension = embeddings[0].Vector?.Length ?? 0;
