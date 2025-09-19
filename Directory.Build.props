@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <!-- Central package metadata and defaults -->
+    <Version>0.1.0</Version>
+    <Authors>RagCap</Authors>
+    <Company>RagCap</Company>
+    <RepositoryUrl>https://github.com/ArchetaAI/ragcap</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/ArchetaAI/ragcap</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageTags>RAG;Embeddings;Search;CLI</PackageTags>
+    <!-- Keep trimming/publish behavior project-specific unless overridden there -->
+  </PropertyGroup>
+
+  <!-- SourceLink for all projects -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- Include additional notices in all packages if present -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)LICENSE-COMMERCIAL.md" Pack="true" PackagePath="LICENSE-COMMERCIAL.md" Condition="Exists('$(MSBuildThisFileDirectory)LICENSE-COMMERCIAL.md')" />
+    <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES.md" Pack="true" PackagePath="THIRD-PARTY-LICENSES.md" Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES.md')" />
+  </ItemGroup>
+</Project>

@@ -35,7 +35,6 @@
     <Authors>RagCap</Authors>
     <RepositoryUrl>https://github.com/ArchetaAI/ragcap</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
@@ -54,8 +53,8 @@
 
   <!-- Include root README and LICENSE in the tool package -->
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="README.md" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="LICENSE" />
+    <None Include="..\README.md" Pack="true" PackagePath="README.md" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="LICENSE" />
   </ItemGroup>
 
   <!-- Include local embedding model assets in the tool package under tools/net8.0/any/models/... -->

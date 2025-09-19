@@ -10,6 +10,15 @@ obj/
 
 # Build artifacts
 build/
+artifacts/
+.tools/
+
+# NuGet packages and archives
+*.nupkg
+*.snupkg
+*.zip
+*.parquet
+*.ragcap
 
 # User-specific files
 *.suo
@@ -39,3 +48,9 @@ sqlite-vec.dll
 sqlite-vec.so
 
 /publish/
+
+# Adapters
+adapters/javascript/node_modules/
+adapters/python/*.egg-info/
+adapters/python/build/
+adapters/python/dist/

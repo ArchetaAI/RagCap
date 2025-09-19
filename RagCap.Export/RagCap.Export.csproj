@@ -11,7 +11,6 @@
     <Authors>RagCap</Authors>
     <RepositoryUrl>https://github.com/ArchetaAI/ragcap</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <NoWarn>$(NoWarn);1591</NoWarn>
@@ -28,8 +27,8 @@
 
   <!-- Include root README and LICENSE in the NuGet package -->
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="README.md" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="LICENSE" />
+    <None Include="..\README.md" Pack="true" PackagePath="README.md" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="LICENSE" />
   </ItemGroup>
 
 </Project>

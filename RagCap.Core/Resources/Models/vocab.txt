@@ -1,5 +1,0 @@
-[CLS]
-[SEP]
-[UNK]
-the
-.
