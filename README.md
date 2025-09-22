@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" alt="RagCap" width="200" />
+  <img src="docs/assets/logo.png" alt="RagCap" width="400" />
 </p>
 
 <div align="center">

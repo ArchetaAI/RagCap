@@ -37,6 +37,9 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <!-- Do not produce a symbols package for the dotnet tool -->
+    <IncludeSymbols>false</IncludeSymbols>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <!-- For development, do not force self-contained or a fixed RID.
