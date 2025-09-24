@@ -35,7 +35,7 @@ namespace RagCap.Core.Search
 
             var dim = await GetEmbeddingDimension(connection);
             EnsureVssTable(connection, dim);
-            PopulateVssTable(connection);
+            PopulateVssTableIfNeeded(connection, dim);
 
             // Pack query vector as blob of float32 in little-endian
             var qblob = new byte[q.Length * 4];
@@ -113,8 +113,27 @@ namespace RagCap.Core.Search
             }
         }
 
-        private void PopulateVssTable(SqliteConnection conn)
+        private void PopulateVssTableIfNeeded(SqliteConnection conn, int dim)
         {
+            long embCount = 0, vssCount = -1;
+            using (var c1 = conn.CreateCommand())
+            {
+                c1.CommandText = "SELECT COUNT(*) FROM embeddings;";
+                embCount = (long)(c1.ExecuteScalar() ?? 0);
+            }
+            try
+            {
+                using var c2 = conn.CreateCommand();
+                c2.CommandText = "SELECT COUNT(*) FROM embeddings_vss;";
+                vssCount = (long)(c2.ExecuteScalar() ?? -1);
+            }
+            catch { vssCount = -1; }
+
+            if (vssCount == embCount && embCount > 0)
+            {
+                return;
+            }
+
             using var tx = conn.BeginTransaction();
             using (var del = conn.CreateCommand())
             {

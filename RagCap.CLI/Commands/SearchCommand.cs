@@ -52,19 +52,41 @@ namespace RagCap.CLI.Commands
 
             [CommandOption("--vec-module")]
             public string? VecModule { get; set; }
+
+            [CommandOption("--include-path")]
+            public string? IncludePath { get; set; }
+
+            [CommandOption("--exclude-path")]
+            public string? ExcludePath { get; set; }
+
+            [CommandOption("--mmr")]
+            [DefaultValue(false)]
+            public bool Mmr { get; set; }
+
+            [CommandOption("--mmr-lambda")]
+            [DefaultValue(0.5f)]
+            public float MmrLambda { get; set; } = 0.5f;
+
+            [CommandOption("--mmr-pool")]
+            [DefaultValue(50)]
+            public int MmrPool { get; set; } = 50;
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
         {
             await HandleSearch(settings.Capsule, settings.Query, settings.TopK, settings.Mode, settings.CandidateLimit, settings.Json,
                 settings.VssPath, settings.VssModule, settings.VssSearchFunc, settings.VssFromBlobFunc,
-                settings.VecPath, settings.VecModule);
+                settings.VecPath, settings.VecModule,
+                settings.IncludePath, settings.ExcludePath,
+                settings.Mmr, settings.MmrLambda, settings.MmrPool);
             return 0;
         }
 
         private async Task HandleSearch(string capsule, string query, int topK, string mode, int candidateLimit, bool json,
             string? vssPath, string? vssModule, string? vssSearchFunc, string? vssFromBlobFunc,
-            string? vecPath, string? vecModule)
+            string? vecPath, string? vecModule,
+            string? includePath, string? excludePath,
+            bool mmr, float mmrLambda, int mmrPool)
         {
             if (!System.IO.File.Exists(capsule))
             {
@@ -87,7 +109,7 @@ namespace RagCap.CLI.Commands
                     Path = vecPath,
                     Module = vecModule ?? "vec0"
                 };
-                var results = await pipeline.RunAsync(query, topK, mode, candidateLimit, vss, vec);
+                var results = await pipeline.RunAsync(query, topK, mode, candidateLimit, vss, vec, includePath, excludePath, mmr, mmrLambda, mmrPool);
 
                 if (json)
                 {
