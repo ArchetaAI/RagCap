@@ -14,7 +14,7 @@ namespace RagCap.Core.Search
             this.capsuleManager = capsuleManager;
         }
 
-        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
+        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK, string? includePath = null, string? excludePath = null)
         {
             var results = new List<SearchResult>();
 
@@ -27,10 +27,14 @@ namespace RagCap.Core.Search
                 FROM chunks_fts
                 JOIN chunks c ON c.id = chunks_fts.rowid
                 JOIN sources s ON s.id = c.source_id
-                WHERE chunks_fts MATCH $query 
-                ORDER BY score 
-                LIMIT $limit";
+                WHERE chunks_fts MATCH $query";
             command.Parameters.AddWithValue("$query", BuildSafeFtsQuery(query));
+            var filter = SqlFilterUtil.BuildPathFilterClause(command, includePath, excludePath, "s.path");
+            if (!string.IsNullOrEmpty(filter))
+            {
+                command.CommandText += " AND " + filter + " ";
+            }
+            command.CommandText += " ORDER BY score LIMIT $limit";
             command.Parameters.AddWithValue("$limit", topK);
 
             using var reader = await command.ExecuteReaderAsync();
@@ -49,7 +53,7 @@ namespace RagCap.Core.Search
             return results;
         }
 
-        public async Task<List<long>> SearchChunkIdsAsync(string query, int limit)
+        public async Task<List<long>> SearchChunkIdsAsync(string query, int limit, string? includePath = null, string? excludePath = null)
         {
             var ids = new List<long>();
 
@@ -61,10 +65,15 @@ namespace RagCap.Core.Search
                 SELECT c.id
                 FROM chunks_fts
                 JOIN chunks c ON c.id = chunks_fts.rowid
-                WHERE chunks_fts MATCH $query 
-                ORDER BY bm25(chunks_fts)
-                LIMIT $limit";
+                JOIN sources s ON s.id = c.source_id
+                WHERE chunks_fts MATCH $query";
             command.Parameters.AddWithValue("$query", BuildSafeFtsQuery(query));
+            var filter = SqlFilterUtil.BuildPathFilterClause(command, includePath, excludePath, "s.path");
+            if (!string.IsNullOrEmpty(filter))
+            {
+                command.CommandText += " AND " + filter + " ";
+            }
+            command.CommandText += " ORDER BY bm25(chunks_fts) LIMIT $limit";
             command.Parameters.AddWithValue("$limit", limit);
 
             using var reader = await command.ExecuteReaderAsync();

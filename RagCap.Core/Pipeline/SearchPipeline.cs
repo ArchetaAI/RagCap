@@ -30,6 +30,15 @@ namespace RagCap.Core.Pipeline
             int mmrPool = 50)
         {
             Console.WriteLine("Running SearchPipeline");
+            // Guard MMR parameters
+            if (mmr)
+            {
+                mmrLambda = Math.Clamp(mmrLambda, 0f, 1f);
+                if (mmrPool < 1) mmrPool = 1;
+            }
+
+            // Expand initial fetch to reduce loss from path filtering and enable richer MMR pool.
+            int effectiveK = ComputeEffectiveK(topK, mmr, mmrPool);
             var validator = new CapsuleValidator();
             var validationResult = validator.Validate(capsulePath);
             if (!validationResult.Success)
@@ -70,86 +79,117 @@ namespace RagCap.Core.Pipeline
                     case "vector":
                         searcher = new VectorSearcher(capsuleManager, embeddingProvider);
                         {
-                            var res = await searcher.SearchAsync(query, topK);
-                            res = FilterByPath(res, includePath, excludePath);
+                            var res = await searcher.SearchAsync(query, effectiveK, includePath, excludePath);
                             if (mmr)
                             {
+                                SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                return res.Take(topK);
                             }
-                            return res;
+                            return res.Take(topK);
                         }
                     case "bm25":
                         searcher = new BM25Searcher(capsuleManager);
                         {
-                            var res = await searcher.SearchAsync(query, topK);
-                            res = FilterByPath(res, includePath, excludePath);
-                            return res;
+                            var res = await searcher.SearchAsync(query, effectiveK, includePath, excludePath);
+                            if (mmr)
+                            {
+                                SetRetrievalScores(res);
+                                res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                return res.Take(topK);
+                            }
+                            return res.Take(topK);
                         }
                     case "vss":
                         // Try SQLite VSS; fall back to vector if unavailable
                         try
                         {
                             var vss = new VssVectorSearcher(capsuleManager, embeddingProvider, vssOptions);
-                            var res = await vss.SearchAsync(query, topK);
-                            res = FilterByPath(res, includePath, excludePath);
+                            var res = await vss.SearchAsync(query, effectiveK, includePath, excludePath);
                             if (mmr)
                             {
+                                SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                return res.Take(topK);
                             }
-                            return res;
+                            return res.Take(topK);
                         }
                         catch
                         {
                             var vec = new VectorSearcher(capsuleManager, embeddingProvider);
-                            var res = await vec.SearchAsync(query, topK);
-                            res = FilterByPath(res, includePath, excludePath);
+                            var res = await vec.SearchAsync(query, effectiveK, includePath, excludePath);
                             if (mmr)
                             {
+                                SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                return res.Take(topK);
                             }
-                            return res;
+                            return res.Take(topK);
                         }
                     case "vec":
                         // sqlite-vec (vec0) module
                         try
                         {
                             var vec = new VecVectorSearcher(capsuleManager, embeddingProvider, vecOptions ?? VecOptions.FromEnvironment());
-                            var res = await vec.SearchAsync(query, topK);
-                            res = FilterByPath(res, includePath, excludePath);
+                            var res = await vec.SearchAsync(query, effectiveK, includePath, excludePath);
                             if (mmr)
                             {
+                                SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                return res.Take(topK);
                             }
-                            return res;
+                            return res.Take(topK);
                         }
                         catch
                         {
                             // fallback to hybrid
                             var hybrid2 = new HybridSearcher(capsuleManager, embeddingProvider, candidateLimit);
                             {
-                                var res = await hybrid2.SearchAsync(query, topK);
-                                res = FilterByPath(res, includePath, excludePath);
+                                var res = await hybrid2.SearchAsync(query, effectiveK, includePath, excludePath);
                                 if (mmr)
                                 {
+                                    SetRetrievalScores(res);
                                     res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                    return res.Take(topK);
                                 }
-                                return res;
+                                return res.Take(topK);
                             }
                         }
                     case "hybrid":
                     default:
                         var hybrid = new HybridSearcher(capsuleManager, embeddingProvider, candidateLimit);
                         {
-                            var res = await hybrid.SearchAsync(query, topK);
-                            res = FilterByPath(res, includePath, excludePath);
+                            var res = await hybrid.SearchAsync(query, effectiveK, includePath, excludePath);
                             if (mmr)
                             {
+                                SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                return res.Take(topK);
                             }
-                            return res;
+                            return res.Take(topK);
                         }
                 }
             }
+        }
+
+        private static void SetRetrievalScores(IEnumerable<SearchResult> results)
+        {
+            foreach (var r in results)
+            {
+                r.RetrievalScore = r.Score;
+            }
+        }
+
+        private static int ComputeEffectiveK(int topK, bool mmr, int mmrPool)
+        {
+            int baseK = topK;
+            if (mmr)
+            {
+                baseK = Math.Max(topK, mmrPool);
+            }
+            // Modest expansion to withstand filtering; hard cap to avoid huge queries.
+            var expanded = Math.Min(Math.Max(baseK * 3, topK), 1000);
+            return expanded;
         }
 
         private static IEnumerable<SearchResult> FilterByPath(IEnumerable<SearchResult> results, string? include, string? exclude)
@@ -162,7 +202,7 @@ namespace RagCap.Core.Pipeline
 
             bool Matches(string path)
             {
-                var p = path ?? string.Empty;
+                var p = (path ?? string.Empty).Replace('\\', '/');
                 if (exc.Any(rx => rx.IsMatch(p))) return false;
                 if (inc.Count == 0) return true;
                 return inc.Any(rx => rx.IsMatch(p));
@@ -178,7 +218,8 @@ namespace RagCap.Core.Pipeline
             var parts = patterns.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             foreach (var part in parts)
             {
-                var rx = Regex.Escape(part)
+                var normalized = part.Replace('\\', '/');
+                var rx = Regex.Escape(normalized)
                     .Replace(@"\*", ".*")
                     .Replace(@"\?", ".");
                 list.Add(new Regex("^" + rx + "$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
@@ -233,6 +274,7 @@ namespace RagCap.Core.Pipeline
             var first = pool.OrderByDescending(r => qsim[r.ChunkId]).First();
             selected.Add(first);
             selectedIds.Add(first.ChunkId);
+            first.RerankScore = lambda * qsim[first.ChunkId];
 
             while (selected.Count < Math.Min(topK, pool.Count))
             {
@@ -264,6 +306,7 @@ namespace RagCap.Core.Pipeline
                 if (best == null) break;
                 selected.Add(best);
                 selectedIds.Add(best.ChunkId);
+                best.RerankScore = bestScore;
             }
 
             return selected;
@@ -304,5 +347,7 @@ namespace RagCap.Core.Pipeline
         public string? Source { get; set; }
         public string? Text { get; set; }
         public float Score { get; set; }
+        public float? RetrievalScore { get; set; }
+        public float? RerankScore { get; set; }
     }
 }

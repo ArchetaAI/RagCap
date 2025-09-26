@@ -27,7 +27,7 @@ namespace RagCap.Core.Search
             this.options = options ?? VecOptions.FromEnvironment();
         }
 
-        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
+        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK, string? includePath = null, string? excludePath = null)
         {
             var q = await embeddingProvider.GenerateEmbeddingAsync(query);
 
@@ -48,10 +48,14 @@ namespace RagCap.Core.Search
                 FROM embeddings_vec
                 JOIN chunks c ON c.id = embeddings_vec.rowid
                 JOIN sources s ON s.id = c.source_id
-                WHERE embedding MATCH $q
-                ORDER BY embeddings_vec.distance ASC
-                LIMIT $k;";
+                WHERE embedding MATCH $q";
             cmd.Parameters.AddWithValue("$q", qjson);
+            var filter = SqlFilterUtil.BuildPathFilterClause(cmd, includePath, excludePath, "s.path");
+            if (!string.IsNullOrEmpty(filter))
+            {
+                cmd.CommandText += " AND " + filter;
+            }
+            cmd.CommandText += " ORDER BY embeddings_vec.distance ASC LIMIT $k;";
             cmd.Parameters.AddWithValue("$k", topK);
 
             var results = new List<SearchResult>();
@@ -178,7 +182,9 @@ namespace RagCap.Core.Search
             }
             catch { vecCount = -1; }
 
-            if (vecCount == embCount && embCount > 0)
+            var fp = await ComputeEmbeddingsFingerprintAsync(conn);
+            var currentIndexFp = await GetMetaAsync(conn, "vec_index_fp");
+            if (vecCount == embCount && embCount > 0 && string.Equals(fp, currentIndexFp, StringComparison.Ordinal))
             {
                 return;
             }
@@ -214,6 +220,9 @@ namespace RagCap.Core.Search
             }
 
             tx.Commit();
+
+            // Record fingerprint for freshness tracking
+            await SetMetaAsync(conn, "vec_index_fp", fp);
         }
 
         private static string SerializeVectorToJson(float[] v)
@@ -228,6 +237,46 @@ namespace RagCap.Core.Search
             }
             sb.Append(']');
             return sb.ToString();
+        }
+
+        private static async Task<string> ComputeEmbeddingsFingerprintAsync(SqliteConnection conn)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*), COALESCE(SUM(length(vector)),0), COALESCE(MAX(dimension),0) FROM embeddings;";
+            using var r = await cmd.ExecuteReaderAsync();
+            long count = 0, sum = 0, maxdim = 0;
+            if (await r.ReadAsync())
+            {
+                count = r.IsDBNull(0) ? 0 : r.GetInt64(0);
+                sum = r.IsDBNull(1) ? 0 : r.GetInt64(1);
+                maxdim = r.IsDBNull(2) ? 0 : r.GetInt64(2);
+            }
+            return $"{count}:{sum}:{maxdim}";
+        }
+
+        private static async Task<string?> GetMetaAsync(SqliteConnection conn, string key)
+        {
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT value FROM meta WHERE key = $k;";
+                cmd.Parameters.AddWithValue("$k", key);
+                return (string?)await cmd.ExecuteScalarAsync();
+            }
+            catch { return null; }
+        }
+
+        private static async Task SetMetaAsync(SqliteConnection conn, string key, string value)
+        {
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "INSERT OR REPLACE INTO meta(key, value) VALUES ($k,$v);";
+                cmd.Parameters.AddWithValue("$k", key);
+                cmd.Parameters.AddWithValue("$v", value);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch { }
         }
     }
 }

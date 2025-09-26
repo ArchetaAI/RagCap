@@ -24,7 +24,7 @@ namespace RagCap.Core.Search
             this.options = options ?? VssOptions.FromEnvironment();
         }
 
-        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
+        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK, string? includePath = null, string? excludePath = null)
         {
             var q = await embeddingProvider.GenerateEmbeddingAsync(query);
 
@@ -48,10 +48,14 @@ namespace RagCap.Core.Search
                 SELECT c.id, s.path, c.text, v.distance
                 FROM {searchFunc}(embeddings_vss, embedding, $qvec, $k) AS v
                 JOIN chunks c ON c.id = v.rowid
-                JOIN sources s ON s.id = c.source_id
-                ORDER BY v.distance ASC
-                LIMIT $k;";
+                JOIN sources s ON s.id = c.source_id";
             cmd.Parameters.AddWithValue("$qvec", qblob);
+            var filter = SqlFilterUtil.BuildPathFilterClause(cmd, includePath, excludePath, "s.path");
+            if (!string.IsNullOrEmpty(filter))
+            {
+                cmd.CommandText += " WHERE " + filter;
+            }
+            cmd.CommandText += " ORDER BY v.distance ASC LIMIT $k;";
             cmd.Parameters.AddWithValue("$k", topK);
 
             var results = new List<SearchResult>();
@@ -129,7 +133,9 @@ namespace RagCap.Core.Search
             }
             catch { vssCount = -1; }
 
-            if (vssCount == embCount && embCount > 0)
+            var fp = ComputeEmbeddingsFingerprint(conn);
+            var currentIndexFp = GetMeta(conn, "vss_index_fp");
+            if (vssCount == embCount && embCount > 0 && string.Equals(fp, currentIndexFp, StringComparison.Ordinal))
             {
                 return;
             }
@@ -157,6 +163,49 @@ namespace RagCap.Core.Search
                 }
             }
             tx.Commit();
+
+            // Record fingerprint for freshness tracking
+            SetMeta(conn, "vss_index_fp", fp);
+        }
+
+        private static string ComputeEmbeddingsFingerprint(SqliteConnection conn)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*), COALESCE(SUM(length(vector)),0), COALESCE(MAX(dimension),0) FROM embeddings;";
+            using var r = cmd.ExecuteReader();
+            long count = 0, sum = 0, maxdim = 0;
+            if (r.Read())
+            {
+                count = r.IsDBNull(0) ? 0 : r.GetInt64(0);
+                sum = r.IsDBNull(1) ? 0 : r.GetInt64(1);
+                maxdim = r.IsDBNull(2) ? 0 : r.GetInt64(2);
+            }
+            return $"{count}:{sum}:{maxdim}";
+        }
+
+        private static string? GetMeta(SqliteConnection conn, string key)
+        {
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT value FROM meta WHERE key = $k;";
+                cmd.Parameters.AddWithValue("$k", key);
+                return cmd.ExecuteScalar() as string;
+            }
+            catch { return null; }
+        }
+
+        private static void SetMeta(SqliteConnection conn, string key, string value)
+        {
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "INSERT OR REPLACE INTO meta(key, value) VALUES ($k,$v);";
+                cmd.Parameters.AddWithValue("$k", key);
+                cmd.Parameters.AddWithValue("$v", value);
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
         }
     }
 }

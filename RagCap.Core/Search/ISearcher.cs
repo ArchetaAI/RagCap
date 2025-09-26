@@ -7,6 +7,6 @@ namespace RagCap.Core.Search
 {
     public interface ISearcher
     {
-        Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK);
+        Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK, string? includePath = null, string? excludePath = null);
     }
 }

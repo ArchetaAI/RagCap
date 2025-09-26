@@ -120,7 +120,10 @@ namespace RagCap.CLI.Commands
                 {
                     foreach (var result in results)
                     {
-                        AnsiConsole.WriteLine($"Result from '{result.Source}' (chunk {result.ChunkId}, score: {result.Score:F4}):");
+                        var scoreInfo = result.RerankScore.HasValue
+                            ? $"retrieval: {(result.RetrievalScore ?? result.Score):F4}, mmr: {result.RerankScore.Value:F4}"
+                            : $"score: {result.Score:F4}";
+                        AnsiConsole.WriteLine($"Result from '{result.Source}' (chunk {result.ChunkId}, {scoreInfo}):");
                         AnsiConsole.WriteLine(result.Text ?? string.Empty);
                         AnsiConsole.WriteLine();
                     }

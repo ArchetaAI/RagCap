@@ -20,23 +20,23 @@ namespace RagCap.Core.Search
             this.candidateLimit = candidateLimit;
         }
 
-        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
+        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK, string? includePath = null, string? excludePath = null)
         {
             // Use BM25 to select a candidate set and vector to re-rank for scalability
-            var candidateIds = await bm25Searcher.SearchChunkIdsAsync(query, candidateLimit);
+            var candidateIds = await bm25Searcher.SearchChunkIdsAsync(query, candidateLimit, includePath, excludePath);
 
             IEnumerable<SearchResult> vectorResults;
             if (candidateIds.Count > 0)
             {
-                vectorResults = await vectorSearcher.SearchAsyncCandidates(query, topK, candidateIds);
+                vectorResults = await vectorSearcher.SearchAsyncCandidates(query, topK, candidateIds, includePath, excludePath);
             }
             else
             {
                 // Fallback: no BM25 hits, scan full vector space
-                vectorResults = await vectorSearcher.SearchAsync(query, topK);
+                vectorResults = await vectorSearcher.SearchAsync(query, topK, includePath, excludePath);
             }
 
-            var bm25Results = await bm25Searcher.SearchAsync(query, topK);
+            var bm25Results = await bm25Searcher.SearchAsync(query, topK, includePath, excludePath);
 
             // Materialize lists to avoid repeated enumeration and index lookups
             var bm25List = bm25Results.ToList();

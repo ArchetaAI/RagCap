@@ -20,12 +20,12 @@ namespace RagCap.Core.Search
             this.embeddingProvider = embeddingProvider;
         }
 
-        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK)
+        public async Task<IEnumerable<SearchResult>> SearchAsync(string query, int topK, string? includePath = null, string? excludePath = null)
         {
-            return await SearchAsyncCandidates(query, topK, null);
+            return await SearchAsyncCandidates(query, topK, null, includePath, excludePath);
         }
 
-        public async Task<IEnumerable<SearchResult>> SearchAsyncCandidates(string query, int topK, IEnumerable<long>? candidateChunkIds)
+        public async Task<IEnumerable<SearchResult>> SearchAsyncCandidates(string query, int topK, IEnumerable<long>? candidateChunkIds, string? includePath = null, string? excludePath = null)
         {
             var queryEmbedding = await embeddingProvider.GenerateEmbeddingAsync(query);
             var results = new List<SearchResult>();
@@ -50,6 +50,11 @@ namespace RagCap.Core.Search
                 JOIN chunks c ON c.id = e.chunk_id
                 JOIN sources s ON s.id = c.source_id
                 WHERE c.id IN ({string.Join(",", paramNames)})";
+                var filter = SqlFilterUtil.BuildPathFilterClause(command, includePath, excludePath, "s.path");
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    command.CommandText += " AND " + filter;
+                }
             }
             else
             {
@@ -58,6 +63,11 @@ namespace RagCap.Core.Search
                 FROM embeddings e
                 JOIN chunks c ON c.id = e.chunk_id
                 JOIN sources s ON s.id = c.source_id";
+                var filter = SqlFilterUtil.BuildPathFilterClause(command, includePath, excludePath, "s.path");
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    command.CommandText += " WHERE " + filter;
+                }
             }
 
             using var reader = await command.ExecuteReaderAsync();
