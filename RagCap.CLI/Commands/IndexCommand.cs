@@ -21,6 +21,11 @@ namespace RagCap.CLI.Commands
             [CommandOption("--vec-module")]
             [DefaultValue("vec0")]
             public string VecModule { get; set; } = "vec0";
+
+            [CommandOption("--smart")]
+            [Description("Skip rebuild if index appears fresh (fingerprint check)")]
+            [DefaultValue(false)]
+            public bool Smart { get; set; }
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
@@ -48,7 +53,15 @@ namespace RagCap.CLI.Commands
 
                 var dim = await GetDim(conn);
                 EnsureVec(conn, dim, opts);
-                await PopulateVec(conn, opts);
+                if (settings.Smart && IsVecFresh(conn))
+                {
+                    AnsiConsole.MarkupLine("[yellow]Index appears fresh; use --smart=false or --rebuild behavior to force rebuild.[/]");
+                }
+                else
+                {
+                    await PopulateVec(conn, opts);
+                    UpdateFingerprint(conn);
+                }
                 AnsiConsole.MarkupLine("[green]sqlite-vec index built successfully.[/]");
                 return 0;
             }
@@ -58,6 +71,39 @@ namespace RagCap.CLI.Commands
                 AnsiConsole.WriteException(ex);
                 return 1;
             }
+        }
+
+        private bool IsVecFresh(SqliteConnection conn)
+        {
+            var fp = ComputeEmbeddingsFingerprint(conn);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT value FROM meta WHERE key='vec_index_fp';";
+            var cur = cmd.ExecuteScalar() as string;
+            return string.Equals(fp, cur, System.StringComparison.Ordinal);
+        }
+
+        private void UpdateFingerprint(SqliteConnection conn)
+        {
+            var fp = ComputeEmbeddingsFingerprint(conn);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "INSERT OR REPLACE INTO meta(key, value) VALUES ('vec_index_fp', $v);";
+            cmd.Parameters.AddWithValue("$v", fp);
+            cmd.ExecuteNonQuery();
+        }
+
+        private string ComputeEmbeddingsFingerprint(SqliteConnection conn)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*), COALESCE(SUM(length(vector)),0), COALESCE(MAX(dimension),0) FROM embeddings;";
+            using var r = cmd.ExecuteReader();
+            long count = 0, sum = 0, maxdim = 0;
+            if (r.Read())
+            {
+                count = r.IsDBNull(0) ? 0 : r.GetInt64(0);
+                sum = r.IsDBNull(1) ? 0 : r.GetInt64(1);
+                maxdim = r.IsDBNull(2) ? 0 : r.GetInt64(2);
+            }
+            return $"{count}:{sum}:{maxdim}";
         }
 
         private async Task<int> GetDim(SqliteConnection conn)

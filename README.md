@@ -156,17 +156,24 @@ All commands are subcommands of `ragcap`. If using a local tool path, prefix wit
   - Example: `ragcap export cap.ragcap -f parquet -o ./artifacts/exports/`
 
 - index: Build sqlite-vec index inside the capsule (for `--mode vec`).
-  - Usage: `ragcap index <capsule> [--vec-path <dll|so|dylib>] [--vec-module <name>]`
+  - Usage: `ragcap index <capsule> [--vec-path <dll|so|dylib>] [--vec-module <name>] [--smart]`
   - Example (Windows): `ragcap index cap.ragcap --vec-path .\sqlite-vec.dll --vec-module vec0`
+  - Notes: By default, the index is rebuilt. Use `--smart` to skip rebuilding when a fingerprint indicates the existing index is fresh.
 
 - inspect: Display capsule metadata and stats.
   - Usage: `ragcap inspect <input> [--json]`
 
 - search: Search a capsule (hybrid/BM25/vector/sqlite-vec/vss).
-  - Usage: `ragcap search <capsule> <query> [--top-k <int>] [--mode <hybrid|bm25|vector|vec|vss>] [--candidate-limit <int>] [--json] [--vss-path <dll|so|dylib>] [--vss-module <name>] [--vss-search-func <name>] [--vss-fromblob-func <name>] [--vec-path <dll|so|dylib>] [--vec-module <name>]`
+  - Usage: `ragcap search <capsule> <query> [--top-k <int>] [--mode <hybrid|bm25|vector|vec|vss>] [--candidate-limit <int>] [--include-path <globs>] [--exclude-path <globs>] [--mmr] [--mmr-lambda <0..1>] [--mmr-pool <int>] [--search-pool <int>] [--score-mode <original|mmr|retrieval>] [--reindex] [--json] [--vss-path <dll|so|dylib>] [--vss-module <name>] [--vss-search-func <name>] [--vss-fromblob-func <name>] [--vec-path <dll|so|dylib>] [--vec-module <name>]`
   - Examples (PowerShell with space in query):
     - `ragcap --% search .\cap.ragcap "what is this repo?" --top-k 3 --mode hybrid`
     - `ragcap --% search .\cap.ragcap "vector test" --mode vec --vec-path .\sqlite-vec.dll --vec-module vec0`
+  - Notes:
+    - include/exclude: Glob-like patterns (`*`, `?`) matched against normalized paths (`\\` treated as `/`). Separate patterns with comma or semicolon.
+    - MMR: `--mmr` enables Maximal Marginal Relevance re-ranking. Tune with `--mmr-lambda` (0..1) and `--mmr-pool`.
+    - search-pool: Override initial fetch size before filtering/MMR. Defaults to an automatic expansion.
+    - score-mode: Control which score surface in `Score` when MMR is enabled: `original` (default), `mmr`, or `retrieval`. JSON output includes `RetrievalScore` and `RerankScore`.
+    - reindex: Forces VSS/sqlite-vec index rebuilds before searching.
 
 - serve: Run HTTP server over a capsule.
   - Usage: `ragcap serve <CAPSULE_PATH> [--port <int>] [--host <name>] [--log-level <Trace|Debug|Information|Warning|Error|Critical|None>]`

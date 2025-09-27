@@ -6,6 +6,17 @@ namespace RagCap.Core.Search
 {
     internal static class SqlFilterUtil
     {
+        public static void EnsurePathIndex(SqliteConnection conn)
+        {
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "CREATE INDEX IF NOT EXISTS idx_sources_path ON sources(path);";
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+        }
+
         public static string BuildPathFilterClause(SqliteCommand cmd, string? include, string? exclude, string pathExpr = "s.path")
         {
             var inc = SplitPatterns(include);

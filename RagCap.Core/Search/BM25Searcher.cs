@@ -22,6 +22,7 @@ namespace RagCap.Core.Search
             await connection.OpenAsync();
 
             using var command = connection.CreateCommand();
+            SqlFilterUtil.EnsurePathIndex(connection);
             command.CommandText = @"
                 SELECT c.id, s.path, c.text, bm25(chunks_fts) as score
                 FROM chunks_fts
@@ -61,6 +62,7 @@ namespace RagCap.Core.Search
             await connection.OpenAsync();
 
             using var command = connection.CreateCommand();
+            SqlFilterUtil.EnsurePathIndex(connection);
             command.CommandText = @"
                 SELECT c.id
                 FROM chunks_fts

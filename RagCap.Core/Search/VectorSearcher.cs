@@ -34,6 +34,7 @@ namespace RagCap.Core.Search
             await connection.OpenAsync();
 
             using var command = connection.CreateCommand();
+            SqlFilterUtil.EnsurePathIndex(connection);
             if (candidateChunkIds != null && candidateChunkIds.Any())
             {
                 var ids = candidateChunkIds.Distinct().ToList();

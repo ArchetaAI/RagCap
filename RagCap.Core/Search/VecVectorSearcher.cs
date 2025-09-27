@@ -38,7 +38,15 @@ namespace RagCap.Core.Search
 
             var dim = await GetEmbeddingDimension(connection);
             EnsureVecTable(connection, dim);
-            await PopulateVecTableIfNeeded(connection, dim);
+            SqlFilterUtil.EnsurePathIndex(connection);
+            if (options.ForceReindex)
+            {
+                await RebuildVecTableAsync(connection);
+            }
+            else
+            {
+                await PopulateVecTableIfNeeded(connection, dim);
+            }
 
             var qjson = SerializeVectorToJson(q);
 
@@ -222,6 +230,43 @@ namespace RagCap.Core.Search
             tx.Commit();
 
             // Record fingerprint for freshness tracking
+            await SetMetaAsync(conn, "vec_index_fp", fp);
+        }
+
+        private async Task RebuildVecTableAsync(SqliteConnection conn)
+        {
+            using var tx = conn.BeginTransaction();
+            using (var del = conn.CreateCommand())
+            {
+                del.Transaction = tx;
+                del.CommandText = "DELETE FROM embeddings_vec;";
+                await del.ExecuteNonQueryAsync();
+            }
+
+            using (var sel = conn.CreateCommand())
+            {
+                sel.Transaction = tx;
+                sel.CommandText = "SELECT chunk_id, vector FROM embeddings;";
+                using var r = await sel.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    var rowid = r.GetInt64(0);
+                    var blob = (byte[])r.GetValue(1);
+                    var vec = new float[blob.Length / 4];
+                    Buffer.BlockCopy(blob, 0, vec, 0, blob.Length);
+                    var json = SerializeVectorToJson(vec);
+
+                    using var ins = conn.CreateCommand();
+                    ins.Transaction = tx;
+                    ins.CommandText = "INSERT INTO embeddings_vec(rowid, embedding) VALUES ($id, $json);";
+                    ins.Parameters.AddWithValue("$id", rowid);
+                    ins.Parameters.AddWithValue("$json", json);
+                    await ins.ExecuteNonQueryAsync();
+                }
+            }
+
+            tx.Commit();
+            var fp = await ComputeEmbeddingsFingerprintAsync(conn);
             await SetMetaAsync(conn, "vec_index_fp", fp);
         }
 

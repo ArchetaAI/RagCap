@@ -14,10 +14,17 @@ namespace RagCap.Core.Pipeline
     public class SearchPipeline
     {
         private readonly string capsulePath;
+        private readonly IEmbeddingProvider? providerOverride;
 
         public SearchPipeline(string capsulePath)
         {
             this.capsulePath = capsulePath;
+        }
+
+        public SearchPipeline(string capsulePath, IEmbeddingProvider embeddingProvider)
+        {
+            this.capsulePath = capsulePath;
+            this.providerOverride = embeddingProvider;
         }
 
         public async Task<IEnumerable<SearchResult>> RunAsync(string query, int topK, string mode, int candidateLimit = 500,
@@ -27,7 +34,9 @@ namespace RagCap.Core.Pipeline
             string? excludePath = null,
             bool mmr = false,
             float mmrLambda = 0.5f,
-            int mmrPool = 50)
+            int mmrPool = 50,
+            int searchPool = 0,
+            string? scoreMode = null)
         {
             Console.WriteLine("Running SearchPipeline");
             // Guard MMR parameters
@@ -38,7 +47,7 @@ namespace RagCap.Core.Pipeline
             }
 
             // Expand initial fetch to reduce loss from path filtering and enable richer MMR pool.
-            int effectiveK = ComputeEffectiveK(topK, mmr, mmrPool);
+            int effectiveK = searchPool > 0 ? Math.Max(topK, Math.Min(searchPool, 5000)) : ComputeEffectiveK(topK, mmr, mmrPool);
             var validator = new CapsuleValidator();
             var validationResult = validator.Validate(capsulePath);
             if (!validationResult.Success)
@@ -51,27 +60,7 @@ namespace RagCap.Core.Pipeline
                 var provider = await capsuleManager.GetMetaValueAsync("embedding_provider") ?? "local";
                 var model = await capsuleManager.GetMetaValueAsync("embedding_model");
 
-                IEmbeddingProvider embeddingProvider;
-                if (provider.Equals("api", StringComparison.OrdinalIgnoreCase))
-                {
-                    var config = ConfigManager.GetConfig();
-                    var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY") ?? config.Api?.ApiKey;
-                    if (string.IsNullOrEmpty(apiKey))
-                    {
-                        throw new Exception("RAGCAP_API_KEY environment variable or config file entry must be set when using the API provider.");
-                    }
-                    if (string.IsNullOrEmpty(model))
-                    {
-                        throw new Exception("Embedding model must be specified for API provider.");
-                    }
-                    var endpoint = await capsuleManager.GetMetaValueAsync("embedding_endpoint");
-                    var apiVersion = await capsuleManager.GetMetaValueAsync("embedding_api_version");
-                    embeddingProvider = new ApiEmbeddingProvider(apiKey, model, endpoint, apiVersion);
-                }
-                else
-                {
-                    embeddingProvider = new LocalEmbeddingProvider();
-                }
+                IEmbeddingProvider embeddingProvider = providerOverride ?? await ResolveEmbeddingProvider(capsuleManager, provider, model);
 
                 ISearcher searcher;
                 switch (mode.ToLower())
@@ -84,6 +73,7 @@ namespace RagCap.Core.Pipeline
                             {
                                 SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                ApplyScoreMode(res, scoreMode);
                                 return res.Take(topK);
                             }
                             return res.Take(topK);
@@ -96,6 +86,7 @@ namespace RagCap.Core.Pipeline
                             {
                                 SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                ApplyScoreMode(res, scoreMode);
                                 return res.Take(topK);
                             }
                             return res.Take(topK);
@@ -110,6 +101,7 @@ namespace RagCap.Core.Pipeline
                             {
                                 SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                ApplyScoreMode(res, scoreMode);
                                 return res.Take(topK);
                             }
                             return res.Take(topK);
@@ -122,6 +114,7 @@ namespace RagCap.Core.Pipeline
                             {
                                 SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                ApplyScoreMode(res, scoreMode);
                                 return res.Take(topK);
                             }
                             return res.Take(topK);
@@ -150,6 +143,7 @@ namespace RagCap.Core.Pipeline
                                 {
                                     SetRetrievalScores(res);
                                     res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                    ApplyScoreMode(res, scoreMode);
                                     return res.Take(topK);
                                 }
                                 return res.Take(topK);
@@ -164,6 +158,7 @@ namespace RagCap.Core.Pipeline
                             {
                                 SetRetrievalScores(res);
                                 res = await ApplyMmrAsync(res, capsuleManager, embeddingProvider, query, topK, mmrPool, mmrLambda);
+                                ApplyScoreMode(res, scoreMode);
                                 return res.Take(topK);
                             }
                             return res.Take(topK);
@@ -172,11 +167,52 @@ namespace RagCap.Core.Pipeline
             }
         }
 
+        private static async Task<IEmbeddingProvider> ResolveEmbeddingProvider(CapsuleManager capsuleManager, string provider, string? model)
+        {
+            if (string.Equals(provider, "api", StringComparison.OrdinalIgnoreCase))
+            {
+                var config = ConfigManager.GetConfig();
+                var apiKey = Environment.GetEnvironmentVariable("RAGCAP_API_KEY") ?? config.Api?.ApiKey;
+                if (string.IsNullOrEmpty(apiKey))
+                {
+                    throw new Exception("RAGCAP_API_KEY environment variable or config file entry must be set when using the API provider.");
+                }
+                if (string.IsNullOrEmpty(model))
+                {
+                    throw new Exception("Embedding model must be specified for API provider.");
+                }
+                var endpoint = await capsuleManager.GetMetaValueAsync("embedding_endpoint");
+                var apiVersion = await capsuleManager.GetMetaValueAsync("embedding_api_version");
+                return new ApiEmbeddingProvider(apiKey, model, endpoint, apiVersion);
+            }
+            return new LocalEmbeddingProvider();
+        }
+
         private static void SetRetrievalScores(IEnumerable<SearchResult> results)
         {
             foreach (var r in results)
             {
                 r.RetrievalScore = r.Score;
+            }
+        }
+
+        private static void ApplyScoreMode(IEnumerable<SearchResult> results, string? mode)
+        {
+            if (string.IsNullOrWhiteSpace(mode)) return;
+            mode = mode.ToLowerInvariant();
+            foreach (var r in results)
+            {
+                switch (mode)
+                {
+                    case "mmr":
+                        if (r.RerankScore.HasValue) r.Score = r.RerankScore.Value;
+                        break;
+                    case "retrieval":
+                        if (r.RetrievalScore.HasValue) r.Score = r.RetrievalScore.Value;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 

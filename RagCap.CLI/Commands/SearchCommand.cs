@@ -70,6 +70,21 @@ namespace RagCap.CLI.Commands
             [CommandOption("--mmr-pool")]
             [DefaultValue(50)]
             public int MmrPool { get; set; } = 50;
+
+            [CommandOption("--search-pool")]
+            [Description("Override initial fetch size before filtering/MMR. 0 = auto.")]
+            [DefaultValue(0)]
+            public int SearchPool { get; set; }
+
+            [CommandOption("--score-mode")]
+            [Description("How to populate Score: original|mmr|retrieval")]
+            [DefaultValue("original")]
+            public string ScoreMode { get; set; } = "original";
+
+            [CommandOption("--reindex")]
+            [Description("Force rebuild VSS/sqlite-vec indexes before search")]
+            [DefaultValue(false)]
+            public bool Reindex { get; set; }
         }
 
         public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
@@ -78,7 +93,8 @@ namespace RagCap.CLI.Commands
                 settings.VssPath, settings.VssModule, settings.VssSearchFunc, settings.VssFromBlobFunc,
                 settings.VecPath, settings.VecModule,
                 settings.IncludePath, settings.ExcludePath,
-                settings.Mmr, settings.MmrLambda, settings.MmrPool);
+                settings.Mmr, settings.MmrLambda, settings.MmrPool,
+                settings.SearchPool, settings.ScoreMode, settings.Reindex);
             return 0;
         }
 
@@ -86,7 +102,8 @@ namespace RagCap.CLI.Commands
             string? vssPath, string? vssModule, string? vssSearchFunc, string? vssFromBlobFunc,
             string? vecPath, string? vecModule,
             string? includePath, string? excludePath,
-            bool mmr, float mmrLambda, int mmrPool)
+            bool mmr, float mmrLambda, int mmrPool,
+            int searchPool, string scoreMode, bool reindex)
         {
             if (!System.IO.File.Exists(capsule))
             {
@@ -102,14 +119,16 @@ namespace RagCap.CLI.Commands
                     Path = vssPath,
                     Module = vssModule,
                     SearchFunction = vssSearchFunc,
-                    FromBlobFunction = vssFromBlobFunc
+                    FromBlobFunction = vssFromBlobFunc,
+                    ForceReindex = reindex
                 };
                 var vec = new RagCap.Core.Search.VecOptions
                 {
                     Path = vecPath,
-                    Module = vecModule ?? "vec0"
+                    Module = vecModule ?? "vec0",
+                    ForceReindex = reindex
                 };
-                var results = await pipeline.RunAsync(query, topK, mode, candidateLimit, vss, vec, includePath, excludePath, mmr, mmrLambda, mmrPool);
+                var results = await pipeline.RunAsync(query, topK, mode, candidateLimit, vss, vec, includePath, excludePath, mmr, mmrLambda, mmrPool, searchPool, scoreMode);
 
                 if (json)
                 {

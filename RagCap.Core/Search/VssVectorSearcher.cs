@@ -35,7 +35,15 @@ namespace RagCap.Core.Search
 
             var dim = await GetEmbeddingDimension(connection);
             EnsureVssTable(connection, dim);
-            PopulateVssTableIfNeeded(connection, dim);
+            SqlFilterUtil.EnsurePathIndex(connection);
+            if (options.ForceReindex)
+            {
+                RebuildVssTable(connection);
+            }
+            else
+            {
+                PopulateVssTableIfNeeded(connection, dim);
+            }
 
             // Pack query vector as blob of float32 in little-endian
             var qblob = new byte[q.Length * 4];
@@ -165,6 +173,35 @@ namespace RagCap.Core.Search
             tx.Commit();
 
             // Record fingerprint for freshness tracking
+            SetMeta(conn, "vss_index_fp", fp);
+        }
+
+        private void RebuildVssTable(SqliteConnection conn)
+        {
+            using var tx = conn.BeginTransaction();
+            using (var del = conn.CreateCommand())
+            {
+                del.Transaction = tx;
+                del.CommandText = "DELETE FROM embeddings_vss;";
+                del.ExecuteNonQuery();
+            }
+            using (var ins = conn.CreateCommand())
+            {
+                ins.Transaction = tx;
+                var fromBlob = options.FromBlobFunction;
+                if (!string.IsNullOrWhiteSpace(fromBlob))
+                {
+                    ins.CommandText = $"INSERT INTO embeddings_vss(rowid, embedding) SELECT chunk_id, {fromBlob}(vector) FROM embeddings;";
+                    ins.ExecuteNonQuery();
+                }
+                else
+                {
+                    ins.CommandText = "INSERT INTO embeddings_vss(rowid, embedding) SELECT chunk_id, vector FROM embeddings;";
+                    ins.ExecuteNonQuery();
+                }
+            }
+            tx.Commit();
+            var fp = ComputeEmbeddingsFingerprint(conn);
             SetMeta(conn, "vss_index_fp", fp);
         }
 
