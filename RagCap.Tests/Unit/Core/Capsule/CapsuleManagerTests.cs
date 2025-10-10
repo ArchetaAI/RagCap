@@ -8,23 +8,21 @@ namespace RagCap.Tests.Unit.Core.Capsule
     public class CapsuleManagerTests
     {
         [Fact]
-        public async Task CreateTablesAsync_ShouldCreateAllTables()
+        public async Task InitializeSchema_ShouldCreateAllTables()
         {
             using (var connection = new SqliteConnection("Data Source=:memory:"))
             {
                 connection.Open();
-                using (var manager = new CapsuleManager(connection))
-                {
-                    await manager.CreateTablesAsync();
+                // Initialize schema directly (constructor-based init is for file-backed capsules)
+                CapsuleSchema.InitializeSchema(connection);
 
-                    var tables = new[] { "meta", "source_documents", "chunks", "embeddings", "fts_idx" };
-                    foreach (var table in tables)
-                    {
-                        var command = connection.CreateCommand();
-                        command.CommandText = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}';";
-                        var result = await command.ExecuteScalarAsync();
-                        Assert.Equal(table, result);
-                    }
+                var tables = new[] { "manifest", "sources", "chunks", "embeddings", "meta", "chunks_fts" };
+                foreach (var table in tables)
+                {
+                    var command = connection.CreateCommand();
+                    command.CommandText = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}';";
+                    var result = await command.ExecuteScalarAsync();
+                    Assert.Equal(table, result);
                 }
             }
         }

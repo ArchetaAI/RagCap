@@ -1,7 +1,4 @@
-using Moq;
 using RagCap.CLI.Commands;
-using RagCap.Core.Pipeline;
-using Spectre.Console.Cli;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -10,27 +7,29 @@ namespace RagCap.Tests.Unit.CLI
     public class BuildCommandTests
     {
         [Fact]
-        public async Task BuildCommand_ShouldCallBuildPipeline()
+        public async Task BuildCommand_MissingInput_ReturnsError()
         {
-            var buildPipelineMock = new Mock<IBuildPipeline>();
-            var command = new BuildCommand(buildPipelineMock.Object);
-
+            var cmd = new BuildCommand();
             var settings = new BuildCommand.Settings
             {
-                Input = "test-input",
-                Output = "test-output.ragcap"
+                Input = null,
+                Output = "out.ragcap"
             };
-
-            var context = new CommandContext(null, "build", null);
-            await command.ExecuteAsync(context, settings);
-
-            buildPipelineMock.Verify(p => p.RunAsync(settings.Input, null), Times.Once);
+            var exit = await cmd.ExecuteAsync(context: null!, settings);
+            Assert.Equal(1, exit);
         }
-    }
 
-    // Dummy interface for mocking
-    public interface IBuildPipeline
-    {
-        Task RunAsync(string inputPath, System.Collections.Generic.List<string> sourcesFromRecipe);
+        [Fact]
+        public async Task BuildCommand_MissingOutput_ReturnsError()
+        {
+            var cmd = new BuildCommand();
+            var settings = new BuildCommand.Settings
+            {
+                Input = "in",
+                Output = null
+            };
+            var exit = await cmd.ExecuteAsync(context: null!, settings);
+            Assert.Equal(1, exit);
+        }
     }
 }

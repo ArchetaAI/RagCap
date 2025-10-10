@@ -27,7 +27,7 @@ namespace RagCap.Tests.Integration
                     var c2 = await cap.AddChunkAsync(new Chunk { SourceDocumentId = s2.ToString(), Content = "beta text", TokenCount = 2 });
                 }
 
-                var pipeline = new SearchPipeline(tmp);
+                var pipeline = new SearchPipeline(tmp, new RagCap.Tests.TestUtils.FakeEmbeddingProvider());
 
                 // Include only docs/** -> should return only alpha text
                 var resInc = await pipeline.RunAsync("text", topK: 5, mode: "bm25", includePath: "docs/**", excludePath: null, mmr: false, mmrLambda: 0.5f, mmrPool: 50);
@@ -48,4 +48,3 @@ namespace RagCap.Tests.Integration
         }
     }
 }
-

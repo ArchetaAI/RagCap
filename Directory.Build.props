@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Central package metadata and defaults -->
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>RagCap</Authors>
     <Company>RagCap</Company>
     <RepositoryUrl>https://github.com/ArchetaAI/ragcap</RepositoryUrl>
