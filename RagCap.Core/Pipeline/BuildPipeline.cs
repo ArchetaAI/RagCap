@@ -97,7 +97,7 @@ namespace RagCap.Core.Pipeline
             int embeddings = 0;
 
             // Normalize and filter files: supported extensions only, skip hidden
-            var supported = new HashSet<string>(new[] { ".txt", ".md", ".pdf", ".html" }, StringComparer.OrdinalIgnoreCase);
+            var supported = new HashSet<string>(new[] { ".txt", ".md", ".pdf", ".html", ".csv" }, StringComparer.OrdinalIgnoreCase);
             var filtered = new List<string>();
             foreach (var f in files)
             {

@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Central package metadata and defaults -->
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>RagCap</Authors>
     <Company>RagCap</Company>
     <RepositoryUrl>https://github.com/ArchetaAI/ragcap</RepositoryUrl>
@@ -31,3 +31,4 @@
     <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES.md" Pack="true" PackagePath="THIRD-PARTY-LICENSES.md" Condition="Exists('$(MSBuildThisFileDirectory)THIRD-PARTY-LICENSES.md')" />
   </ItemGroup>
 </Project>
+

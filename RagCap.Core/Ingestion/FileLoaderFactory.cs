@@ -14,6 +14,7 @@ namespace RagCap.Core.Ingestion
                 ".md" => new MarkdownFileLoader(),
                 ".pdf" => new PdfFileLoader(),
                 ".html" => new HtmlFileLoader(),
+                ".csv" => new CsvFileLoader(),
                 _ => throw new NotSupportedException($"File type {extension} is not supported."),
             };
         }
