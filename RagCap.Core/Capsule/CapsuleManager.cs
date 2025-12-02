@@ -336,6 +336,81 @@ namespace RagCap.Core.Capsule
         }
 
         /// <summary>
+        /// Deletes a source document and all associated chunks and embeddings by source ID.
+        /// </summary>
+        /// <param name="sourceId">The ID of the source document to delete.</param>
+        /// <returns>A tuple with counts of deleted rows: (sources, chunks, embeddings).</returns>
+        public async Task<(int sources, int chunks, int embeddings)> DeleteSourceByIdAsync(long sourceId)
+        {
+            using var tx = _connection.BeginTransaction();
+
+            // Delete embeddings linked to chunks for this source
+            using var delEmb = _connection.CreateCommand();
+            delEmb.Transaction = tx;
+            delEmb.CommandText = @"DELETE FROM embeddings WHERE chunk_id IN (SELECT id FROM chunks WHERE source_id = $sid);";
+            delEmb.Parameters.AddWithValue("$sid", sourceId);
+            var embDeleted = await delEmb.ExecuteNonQueryAsync();
+
+            // Delete chunks for this source
+            using var delChunks = _connection.CreateCommand();
+            delChunks.Transaction = tx;
+            delChunks.CommandText = @"DELETE FROM chunks WHERE source_id = $sid;";
+            delChunks.Parameters.AddWithValue("$sid", sourceId);
+            var chunksDeleted = await delChunks.ExecuteNonQueryAsync();
+
+            // Delete the source row itself
+            using var delSource = _connection.CreateCommand();
+            delSource.Transaction = tx;
+            delSource.CommandText = @"DELETE FROM sources WHERE id = $sid;";
+            delSource.Parameters.AddWithValue("$sid", sourceId);
+            var sourcesDeleted = await delSource.ExecuteNonQueryAsync();
+
+            tx.Commit();
+            return (sourcesDeleted, chunksDeleted, embDeleted);
+        }
+
+        /// <summary>
+        /// Deletes source document(s) and all associated chunks and embeddings by source path.
+        /// If multiple sources share the same path, all will be deleted.
+        /// </summary>
+        /// <param name="sourcePath">The source path to delete.</param>
+        /// <returns>A tuple with counts of deleted rows: (sources, chunks, embeddings).</returns>
+        public async Task<(int sources, int chunks, int embeddings)> DeleteSourceByPathAsync(string sourcePath)
+        {
+            using var tx = _connection.BeginTransaction();
+
+            // Delete embeddings for chunks whose source matches the path
+            using var delEmb = _connection.CreateCommand();
+            delEmb.Transaction = tx;
+            delEmb.CommandText = @"DELETE FROM embeddings WHERE chunk_id IN (
+                SELECT c.id FROM chunks c WHERE c.source_id IN (
+                    SELECT s.id FROM sources s WHERE s.path = $path
+                )
+            );";
+            delEmb.Parameters.AddWithValue("$path", sourcePath);
+            var embDeleted = await delEmb.ExecuteNonQueryAsync();
+
+            // Delete chunks for sources with the path
+            using var delChunks = _connection.CreateCommand();
+            delChunks.Transaction = tx;
+            delChunks.CommandText = @"DELETE FROM chunks WHERE source_id IN (
+                SELECT s.id FROM sources s WHERE s.path = $path
+            );";
+            delChunks.Parameters.AddWithValue("$path", sourcePath);
+            var chunksDeleted = await delChunks.ExecuteNonQueryAsync();
+
+            // Delete the source row(s) themselves
+            using var delSources = _connection.CreateCommand();
+            delSources.Transaction = tx;
+            delSources.CommandText = @"DELETE FROM sources WHERE path = $path;";
+            delSources.Parameters.AddWithValue("$path", sourcePath);
+            var sourcesDeleted = await delSources.ExecuteNonQueryAsync();
+
+            tx.Commit();
+            return (sourcesDeleted, chunksDeleted, embDeleted);
+        }
+
+        /// <summary>
         /// Disposes the capsule manager.
         /// </summary>
         public void Dispose()

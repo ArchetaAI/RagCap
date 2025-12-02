@@ -19,6 +19,7 @@ app.Configure(config =>
     config.AddCommand<VerifyVssCommand>("verify-vss");
     config.AddCommand<VerifyVecCommand>("verify-vec");
     config.AddCommand<IndexCommand>("index");
+    config.AddCommand<DeleteSourceCommand>("delete-source");
 });
 
 return await app.RunAsync(args);
