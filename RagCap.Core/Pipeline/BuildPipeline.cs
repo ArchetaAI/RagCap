@@ -8,6 +8,7 @@ using RagCap.Core.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Spectre.Console;
 
@@ -96,6 +97,9 @@ namespace RagCap.Core.Pipeline
             int chunks = 0;
             int embeddings = 0;
 
+            // Degree of parallelism for embedding generation (defaults to CPU count, cap to 8)
+            int dop = Math.Min(8, Math.Max(1, BuildPipelineEnv.EnvInt("RAGCAP_BUILD_DOP", Environment.ProcessorCount)));
+
             // Normalize and filter files: supported extensions only, skip hidden
             var supported = new HashSet<string>(new[] { ".txt", ".md", ".pdf", ".html", ".csv" }, StringComparer.OrdinalIgnoreCase);
             var filtered = new List<string>();
@@ -148,28 +152,69 @@ namespace RagCap.Core.Pipeline
 
                             sourceDocument.Content = _preprocessor.Process(sourceDocument);
 
-                            var sourceDocumentId = await _capsuleManager.AddSourceDocumentAsync(sourceDocument);
-                            sourceDocument.Id = sourceDocumentId.ToString();
-                            sources++;
+                            // Use a transaction to insert source and chunks efficiently
+                            List<Chunk> chunkContent;
+                            using (var tx = _capsuleManager.BeginTransaction())
+                            {
+                                var sourceDocumentId = await _capsuleManager.AddSourceDocumentAsync(sourceDocument, tx);
+                                sourceDocument.Id = sourceDocumentId.ToString();
+                                sources++;
 
-                            var chunkContent = (_chunker is RagCap.Core.Chunking.BertTokenChunker b)
-                                ? b.Chunk(sourceDocument)
-                                : ((TokenChunker)_chunker).Chunk(sourceDocument);
+                                // Now that sourceDocument.Id is set, we can chunk
+                                chunkContent = (_chunker is RagCap.Core.Chunking.BertTokenChunker b)
+                                    ? b.Chunk(sourceDocument)
+                                    : ((TokenChunker)_chunker).Chunk(sourceDocument);
 
+                                // Insert chunks and capture IDs
+                                foreach (var chunk in chunkContent)
+                                {
+                                    var chunkId = await _capsuleManager.AddChunkAsync(chunk, tx);
+                                    chunk.Id = chunkId;
+                                    chunks++;
+                                }
+                                tx.Commit();
+                            }
+
+                            // Compute embeddings in parallel (bounded)
+                            var vectors = new Dictionary<long, float[]>(capacity: chunkContent.Count);
+                            var throttler = new System.Threading.SemaphoreSlim(dop);
+                            var tasks = new List<Task>();
                             foreach (var chunk in chunkContent)
                             {
-                                var chunkId = await _capsuleManager.AddChunkAsync(chunk);
-                                chunks++;
-
-                                var embedding = await _embeddingProvider.GenerateEmbeddingAsync(chunk.Content ?? string.Empty);
-                                var embeddingRecord = new Embedding
+                                await throttler.WaitAsync();
+                                tasks.Add(Task.Run(async () =>
                                 {
-                                    ChunkId = chunkId.ToString(),
-                                    Vector = embedding,
-                                    Dimension = embedding.Length
-                                };
-                                await _capsuleManager.AddEmbeddingAsync(embeddingRecord);
-                                embeddings++;
+                                    try
+                                    {
+                                        var v = await _embeddingProvider.GenerateEmbeddingAsync(chunk.Content ?? string.Empty);
+                                        lock (vectors)
+                                        {
+                                            vectors[chunk.Id] = v;
+                                        }
+                                    }
+                                    finally
+                                    {
+                                        throttler.Release();
+                                    }
+                                }));
+                            }
+                            await Task.WhenAll(tasks);
+
+                            // Insert embeddings in a second transaction
+                            using (var tx = _capsuleManager.BeginTransaction())
+                            {
+                                foreach (var kv in vectors)
+                                {
+                                    var embeddingRecord = new Embedding
+                                    {
+                                        ChunkId = kv.Key.ToString(),
+                                        Vector = kv.Value,
+                                        Dimension = kv.Value.Length
+                                    };
+                                    await _capsuleManager.AddEmbeddingAsync(embeddingRecord, tx);
+                                    embeddings++;
+                                }
+                                tx.Commit();
                             }
                         }
                         catch (NotSupportedException ex)
@@ -191,6 +236,20 @@ namespace RagCap.Core.Pipeline
             Console.WriteLine($"  Sources: {sources}");
             Console.WriteLine($"  Chunks: {chunks}");
             Console.WriteLine($"  Embeddings: {embeddings}");
+        }
+    }
+}
+
+// Local helpers for BuildPipeline
+namespace RagCap.Core.Pipeline
+{
+    internal static class BuildPipelineEnv
+    {
+        public static int EnvInt(string name, int fallback)
+        {
+            var s = System.Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(s)) return fallback;
+            return int.TryParse(s, out var v) ? v : fallback;
         }
     }
 }

@@ -23,6 +23,26 @@ namespace RagCap.Core.Capsule
         {
             bool newCapsule = !File.Exists(capsulePath);
             _connection.Open();
+
+            // Performance-focused PRAGMAs for faster bulk writes and large datasets
+            try
+            {
+                using var prag = _connection.CreateCommand();
+                // Page size must be set before first table creation to take effect
+                if (newCapsule)
+                {
+                    prag.CommandText = "PRAGMA page_size=32768;";
+                    prag.ExecuteNonQuery();
+                }
+                prag.CommandText = "PRAGMA journal_mode=WAL;"; prag.ExecuteNonQuery();
+                prag.CommandText = "PRAGMA synchronous=NORMAL;"; prag.ExecuteNonQuery();
+                prag.CommandText = "PRAGMA temp_store=MEMORY;"; prag.ExecuteNonQuery();
+                // Negative cache_size means KB; -64000 ~ 64MB cache
+                prag.CommandText = "PRAGMA cache_size=-64000;"; prag.ExecuteNonQuery();
+                // Enable foreign keys in case client code relies on it
+                prag.CommandText = "PRAGMA foreign_keys=ON;"; prag.ExecuteNonQuery();
+            }
+            catch { /* best-effort; ignore if not supported */ }
             if (newCapsule)
             {
                 CapsuleSchema.InitializeSchema(_connection);
@@ -51,6 +71,12 @@ namespace RagCap.Core.Capsule
         }
 
         /// <summary>
+        /// Begins a SQLite transaction on the underlying connection.
+        /// Use to batch inserts for significant performance gains.
+        /// </summary>
+        public SqliteTransaction BeginTransaction() => _connection.BeginTransaction();
+
+        /// <summary>
         /// Adds a source document to the capsule.
         /// </summary>
         /// <param name="document">The source document to add.</param>
@@ -58,6 +84,19 @@ namespace RagCap.Core.Capsule
         public async Task<long> AddSourceDocumentAsync(SourceDocument document)
         {
             using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "INSERT INTO sources (path, hash) VALUES ($path, $hash) RETURNING id;";
+            cmd.Parameters.AddWithValue("$path", document.Path);
+            cmd.Parameters.AddWithValue("$hash", document.Hash);
+            return (long?)await cmd.ExecuteScalarAsync() ?? 0;
+        }
+
+        /// <summary>
+        /// Adds a source document within an existing transaction.
+        /// </summary>
+        public async Task<long> AddSourceDocumentAsync(SourceDocument document, SqliteTransaction transaction)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = transaction;
             cmd.CommandText = "INSERT INTO sources (path, hash) VALUES ($path, $hash) RETURNING id;";
             cmd.Parameters.AddWithValue("$path", document.Path);
             cmd.Parameters.AddWithValue("$hash", document.Hash);
@@ -80,6 +119,20 @@ namespace RagCap.Core.Capsule
         }
 
         /// <summary>
+        /// Adds a chunk within an existing transaction.
+        /// </summary>
+        public async Task<long> AddChunkAsync(Chunk chunk, SqliteTransaction transaction)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = "INSERT INTO chunks (source_id, text, token_count) VALUES ($source_id, $text, $token_count) RETURNING id;";
+            cmd.Parameters.AddWithValue("$source_id", chunk.SourceDocumentId);
+            cmd.Parameters.AddWithValue("$text", chunk.Content);
+            cmd.Parameters.AddWithValue("$token_count", chunk.TokenCount);
+            return (long?)await cmd.ExecuteScalarAsync() ?? 0;
+        }
+
+        /// <summary>
         /// Adds an embedding to the capsule.
         /// </summary>
         /// <param name="embedding">The embedding to add.</param>
@@ -87,6 +140,26 @@ namespace RagCap.Core.Capsule
         {
 #nullable disable
             using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "INSERT INTO embeddings (chunk_id, vector, dimension) VALUES ($chunk_id, $vector, $dimension);";
+
+            var vectorBytes = new byte[embedding.Vector!.Length * 4];
+            Buffer.BlockCopy(embedding.Vector, 0, vectorBytes, 0, vectorBytes.Length);
+
+            cmd.Parameters.AddWithValue("$chunk_id", embedding.ChunkId);
+            cmd.Parameters.AddWithValue("$vector", vectorBytes);
+            cmd.Parameters.AddWithValue("$dimension", embedding.Dimension);
+            await cmd.ExecuteNonQueryAsync();
+#nullable enable
+        }
+
+        /// <summary>
+        /// Adds an embedding within an existing transaction.
+        /// </summary>
+        public async Task AddEmbeddingAsync(Embedding embedding, SqliteTransaction transaction)
+        {
+#nullable disable
+            using var cmd = _connection.CreateCommand();
+            cmd.Transaction = transaction;
             cmd.CommandText = "INSERT INTO embeddings (chunk_id, vector, dimension) VALUES ($chunk_id, $vector, $dimension);";
 
             var vectorBytes = new byte[embedding.Vector!.Length * 4];
